@@ -239,6 +239,8 @@ PUB_PLOTS_JOB_ID=$(sbatch --parsable \
     --mem-per-cpu=4gb \
     --time=30:00 \
     --job-name=pub-plots-${ANALYSIS_TYPE}-${REV_SUFFIX} \
+    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
+    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
     --account=hoehnlab-share \
     --wrap="
     source /optnfs/common/miniconda3/etc/profile.d/conda.sh
