@@ -1,0 +1,8 @@
+# Results directories
+tltt_08_20
+Rplots.pdf
+
+# R files
+.Rhistory
+.RData
+.Rproj.user

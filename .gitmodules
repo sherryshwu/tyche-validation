@@ -1,0 +1,3 @@
+[submodule "xml-writer"]
+	path = xml-writer
+	url = https://github.com/hoehnlab/xml-writer.git
