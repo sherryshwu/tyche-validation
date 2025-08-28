@@ -7,8 +7,8 @@ reversible="false"               # true or false
 max_jobs_at_once=20              # how many jobs to run in parallel
 
 # Script locations
-run_script="${PROJECT_ROOT}/scripts/run_beast_dowser.sh"
-combo_script="${PROJECT_ROOT}/scripts/create_beast_job_combinations.sh"
+run_script="${PROJECT_ROOT}/scripts/beast/run_beast_dowser.sh"
+combo_script="${PROJECT_ROOT}/scripts/beast/create_beast_job_combinations.sh"
 
 echo "=== Submitting BEAST Analysis Jobs ==="
 echo "Simulation: $simulation_run"

@@ -1,14 +1,8 @@
 #!/bin/bash
-# =============================================================================
-# TREE ANALYSIS PIPELINE - STREAMLINED FOR PUBLICATION
-# =============================================================================
-
-set -e
-
 # Get parameters
 SIMULATION_NAME="${1:-tltt_08_20}"
-ANALYSIS_TYPE="${2:-main_analysis}"
-REV_SUFFIX="${3:-rev}"
+REV_SUFFIX="${2:-irrev}"
+ANALYSIS_TYPE="main_analysis"
 
 # Setup paths
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
@@ -41,9 +35,8 @@ source /optnfs/common/miniconda3/etc/profile.d/conda.sh
 conda activate r_phylo
 cd "$PROJECT_ROOT"
 
-#-----------------------------------------------------
+# =============================================================================
 # Step 1: Find all beast outputs and create job lists
-#-----------------------------------------------------
 echo ""
 echo "=== Step 1: Finding BEAST Outputs ==="
 
@@ -72,7 +65,7 @@ echo "Total model types found: ${#MODEL_TYPES[@]}"
 JOB_LIST_FILE="$CONFIGS_DIR/tree_analysis_jobs_${ANALYSIS_TYPE}_${REV_SUFFIX}.csv"
 
 # Write CSV header
-echo "job_id,config_name,template_name,beast_files,true_tree_file,model_type,analysis_type,rev_suffix" > "$JOB_LIST_FILE"
+echo "job_id,config_name,template_name,beast_tree_files,true_tree_file,model_type,analysis_type,rev_suffix" > "$JOB_LIST_FILE"
 
 TOTAL_JOBS=0
 
@@ -112,26 +105,30 @@ for model_type in "${MODEL_TYPES[@]}"; do
                 fi
                 
                 # Find BEAST tree files
-                beast_files=($(find "$config_path" -name "*_tree_with_trait*.tree" | sort))
+                beast_tree_files=($(find "$config_path" -name "*_tree_with_trait*.tree" | sort))
                 if [[ $? -ne 0 ]]; then
                     echo "      ERROR: Timeout finding tree files in $config_path"
                     continue
                 fi
-                if [[ ${#beast_files[@]} -eq 0 ]]; then
+                if [[ ${#beast_tree_files[@]} -eq 0 ]]; then
                     echo "    Warning: No BEAST trees found for $config_name"
                     continue
                 fi
                 
-                echo "      Found ${#beast_files[@]} tree files"
+                echo "      Found ${#beast_tree_files[@]} tree files"
+                echo "    Grouping templates..."
 
                 # Group by template
-                templates=($(printf '%s\n' "${beast_files[@]}" | \
+                templates=($(printf '%s\n' "${beast_tree_files[@]}" | \
                             sed 's|.*/||; s/_[0-9]\+_tree_with_trait.*\.tree$//' | \
                             sort -u))
                 
+                echo "    Found ${#templates[@]} templates: ${templates[*]}"
+                
                 for template_name in "${templates[@]}"; do
+                    echo "      Processing template: $template_name"
                     # Get all files for this template
-                    beast_tree_file=($(printf '%s\n' "${beast_files[@]}" | \
+                    beast_tree_file=($(printf '%s\n' "${beast_tree_files[@]}" | \
                                     grep "/${template_name}_[0-9]\+_tree_with_trait"))
                     
                     # Convert array to semicolon-separated string
@@ -185,7 +182,7 @@ JOB_ID=$(sbatch --parsable \
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
         
-        Rscript scripts/tree_analysis.R \
+        Rscript scripts/analysis/tree_analysis.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
             \"$TREE_ANALYSIS_DIR\"
@@ -193,10 +190,6 @@ JOB_ID=$(sbatch --parsable \
 
 echo "Jobs submitted with ID: $JOB_ID"
 echo "Job list: $JOB_LIST_FILE"
-
-# Save job ID for monitoring
-echo "$JOB_ID" > "$LOG_DIR/tree_analysis_job_id.txt"
-echo "Job ID saved to: $LOG_DIR/tree_analysis_job_id.txt"
 
 # =============================================================================
 # Step 3: Job status check
@@ -216,14 +209,45 @@ fi
 # Step 4: Create combined summary
 echo ""
 echo "=== Step 4: Creating Combined Summary ===" 
-python3 scripts/create_combined_summary.py "$TREE_ANALYSIS_DIR"
+SUMMARY_JOB_ID=$(sbatch --parsable \
+    --dependency=afterok:${JOB_ID} \
+    --cpus-per-task=1 \
+    --mem-per-cpu=2gb \
+    --time=10:00 \
+    --job-name=tree-analysis-summary-${ANALYSIS_TYPE}-${REV_SUFFIX} \
+    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A_%a.out" \
+    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A_%a.err" \
+    --account=hoehnlab-share \
+    --wrap="
+    source /optnfs/common/miniconda3/etc/profile.d/conda.sh
+    conda activate r_phylo
+    cd \"$PROJECT_ROOT\"
+    python3 scripts/analysis/create_combined_summary.py \"$TREE_ANALYSIS_DIR\"
+    ")
+echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID"
 
 # =============================================================================
-# Step 5: Creating publication plots
+# Step 5: Creating publication plots for main analysis
 echo ""
-echo "=== Step 5: Creating Publication Plots ==="
+echo "=== Step 5: Creating Publication Plots for Main Analysis ==="
+
 selected_models="EO_Fixed,EO_Est,IS_Est,MS_Fixed,MS_Est,SC_AR,UCLD_AR"
-Rscript scripts/publication_plots.R "$TREE_ANALYSIS_DIR" "$SIMULATION_NAME" "$ANALYSIS_TYPE" "$REV_SUFFIX" "$selected_models"
+
+PUB_PLOTS_JOB_ID=$(sbatch --parsable \
+    --dependency=afterok:${JOB_ID} \
+    --cpus-per-task=2 \
+    --mem-per-cpu=4gb \
+    --time=30:00 \
+    --job-name=pub-plots-${ANALYSIS_TYPE}-${REV_SUFFIX} \
+    --account=hoehnlab-share \
+    --wrap="
+    source /optnfs/common/miniconda3/etc/profile.d/conda.sh
+    conda activate r_phylo
+    cd \"$PROJECT_ROOT\"
+    Rscript scripts/plotting/publication_plots_main.R \"$TREE_ANALYSIS_DIR\" \"$SIMULATION_NAME\" \"$ANALYSIS_TYPE\" \"$REV_SUFFIX\" \"$selected_models\"
+    ")
+
+echo "Publication plots job submitted with ID: $PUB_PLOTS_JOB_ID"
 
 # =============================================================================
 # Step 6: Submit Tree Plotting Jobs
@@ -246,92 +270,16 @@ PLOT_JOB_ID=$(sbatch --parsable \
         cd \"$PROJECT_ROOT\"
         
         # Tree plotting
-        Rscript scripts/tree_plotting.R \
+        Rscript scripts/plotting/tree_plotting.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
             \"$TREE_ANALYSIS_DIR\"
     ")
-# sbatch --array=1-${TOTAL_JOBS}%5 \
-#     --cpus-per-task=2 \
-#     --mem-per-cpu=8gb \
-#     --time=1:00:00 \
-#     --job-name=tree-plots-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-#     --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
-#     --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
-#     --account=hoehnlab-share \
-#     --wrap="
-#         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-#         conda activate r_phylo
-#         cd \"$PROJECT_ROOT\"
-        
-#         # Tree plotting
-#         Rscript scripts/tree_plotting.R \
-#             \"$JOB_LIST_FILE\" \
-#             \"\$SLURM_ARRAY_TASK_ID\" \
-#             \"$TREE_ANALYSIS_DIR\"
-#     "
 
 echo "Tree plotting jobs submitted with ID: $PLOT_JOB_ID"
-echo "Plot job ID saved to: $LOG_DIR/tree_plotting_job_id.txt"
-echo "$PLOT_JOB_ID" > "$LOG_DIR/tree_plotting_job_id.txt"
 
-# =============================================================================
-# Step 7: Submit Publication Aligned Trees Jobs
-echo ""
-echo "=== Step 7: Submitting Publication Aligned Trees Jobs ==="
-
-PUB_TREES_JOB_ID=$(sbatch --parsable \
-    --dependency=afterok:${PLOT_JOB_ID} \
-    --array=1-${TOTAL_JOBS}%10 \
-    --cpus-per-task=2 \
-    --mem-per-cpu=4gb \
-    --time=30:00 \
-    --job-name=pub-trees-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
-    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
-    --account=hoehnlab-share \
-    --wrap="
-        source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-        conda activate r_phylo
-        cd \"$PROJECT_ROOT\"
-        
-        # Publication aligned trees (default to clone 3)
-        Rscript scripts/plot_aligned_trees.R \
-            \"$JOB_LIST_FILE\" \
-            \"\$SLURM_ARRAY_TASK_ID\" \
-            \"$TREE_ANALYSIS_DIR\" \
-            \"3\"
-    ")
-
-# PUB_TREES_JOB_ID=$(sbatch --parsable \
-#     --array=1-${TOTAL_JOBS}%10 \
-#     --cpus-per-task=2 \
-#     --mem-per-cpu=4gb \
-#     --time=30:00 \
-#     --job-name=pub-trees-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-#     --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
-#     --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
-#     --account=hoehnlab-share \
-#     --wrap="
-#         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-#         conda activate r_phylo
-#         cd \"$PROJECT_ROOT\"
-        
-#         # Publication aligned trees (default to clone 3)
-#         Rscript scripts/plot_scaled_trees.R \
-#             \"$JOB_LIST_FILE\" \
-#             \"\$SLURM_ARRAY_TASK_ID\" \
-#             \"$TREE_ANALYSIS_DIR\" \
-#             \"3\"
-#     ")
-
-echo "Publication aligned trees jobs submitted with ID: $PUB_TREES_JOB_ID"
-echo "Pub trees job ID saved to: $LOG_DIR/pub_trees_job_id.txt"
-echo "$PUB_TREES_JOB_ID" > "$LOG_DIR/pub_trees_job_id.txt"
-
-# Update the final echo statement
 echo ""
 echo "=== Tree Analysis Pipeline Completed: $(date) ==="
 echo "Results directory: $TREE_ANALYSIS_DIR"
-echo "Check publication plots in: $TREE_ANALYSIS_DIR/plots/publication_plots"
-echo "Check aligned trees in: $TREE_ANALYSIS_DIR/plots/publication_plots/aligned_trees"
+echo "Check publication plots in: $TREE_ANALYSIS_DIR/plots/publication"
+echo "Check scaled trees in: $TREE_ANALYSIS_DIR/plots/publication/scaled_trees"

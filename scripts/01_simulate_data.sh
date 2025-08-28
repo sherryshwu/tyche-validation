@@ -54,7 +54,7 @@ echo "=== Starting simulation at $(date) ===" | tee -a "$log_file"
 # Step 1: Generate configurations
 echo "Step 1: Generating configurations..." | tee -a "$log_file"
 # Generate configs
-python scripts/generate_configs.py "$simulation_dir" >> "$log_file" 2>&1
+python scripts/beast/generate_configs.py "$simulation_dir" >> "$log_file" 2>&1
 
 # Count configs
 config_count=$(find "$configs_dir" -name "*.json" 2>/dev/null | wc -l)

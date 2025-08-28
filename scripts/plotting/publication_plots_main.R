@@ -8,7 +8,7 @@ suppressMessages({
   library(stringr)
 })
 
-source("scripts/tree_functions.R")
+source("scripts/analysis/tree_functions.R")
 
 # Get arguments
 args <- commandArgs(trailingOnly = TRUE)

@@ -1,5 +1,5 @@
 #!/bin/bash
-# scripts/create_beast_job_combinations.sh
+# scripts/beast/create_beast_job_combinations.sh
 
 # Parse arguments
 raw_data_dir="$1"

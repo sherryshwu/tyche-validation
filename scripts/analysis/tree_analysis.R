@@ -26,21 +26,21 @@ job_row <- job_data[array_task_id, ]
 config_name <- job_row$config_name
 template_name <- job_row$template_name
 true_tree_file <- job_row$true_tree_file
-beast_files <- strsplit(job_row$beast_files, ";")[[1]]
+beast_tree_files <- strsplit(as.character(job_row$beast_tree_files), ";")[[1]]
 
 cat("=== Tree Analysis Started ===\n")
 cat("Config:", config_name, "\n")
 cat("Template:", template_name, "\n")
-cat("BEAST files:", length(beast_files), "\n")
+cat("BEAST files:", length(beast_tree_files), "\n")
 
 # Create output directory
 config_output_dir <- file.path(output_dir, "results", config_name)
 dir.create(config_output_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Function to read TreeHeight from BEAST log file
-read_tree_height_from_log <- function(beast_file) {
+# Helper function to read TreeHeight from BEAST log file
+read_tree_height_from_log <- function(beast_tree_file) {
   # Construct log file path
-  log_tsv_file <- gsub("_tree_with_trait\\.tree$", "_log.tsv", beast_file)
+  log_tsv_file <- gsub("_tree_with_trait\\.tree$", "_log.tsv", beast_tree_file)
 
   if (!file.exists(log_tsv_file)) {
     cat("  Warning: Log file not found:", basename(log_tsv_file), "\n")
@@ -53,6 +53,71 @@ read_tree_height_from_log <- function(beast_file) {
   tree_height_mean <- unlist(strsplit(tree_height_line[1], "\\s+"))[2]
 
   return(tree_height_mean)
+}
+
+# Helper function for MRCA analysis
+extract_mrca_heights_and_locations <- function(tree, clean_tip_label = FALSE) {
+  tree_phylo <- as.phylo(tree)
+  tips <- tree_phylo$tip.label
+
+  if (clean_tip_label) {
+    tips <- gsub("_heavy$", "", tips)
+    tree_phylo$tip.label <- tips
+  }
+
+  n_tips <- length(tips)
+  node_heights <- node.depth.edgelength(tree_phylo)
+
+  if ("location" %in% colnames(tree@data)) {
+    node_data <- tree@data %>%
+      select(location, node) %>%
+      mutate(node_num = as.numeric(node))
+
+    missing_locations <- sum(is.na(node_data$location))
+    if (missing_locations > 0) {
+      cat("  Missing locations:", missing_locations, "\n")
+    }
+  } else {
+    cat("  WARNING: No 'location' column found in tree data\n")
+    return(data.frame())
+  }
+
+  mrca_data <- data.frame(
+    tip1 = character(),
+    tip2 = character(),
+    mrca_node = numeric(),
+    mrca_height = numeric(),
+    mrca_location = character(),
+    stringsAsFactors = FALSE
+  )
+
+  for (i in 1:(n_tips - 1)) {
+    for (j in (i + 1):n_tips) {
+      mrca_node <- getMRCA(tree_phylo, c(tips[i], tips[j]))
+
+      if (!is.null(mrca_node) && !is.na(mrca_node)) {
+        mrca_height <- node_heights[mrca_node]
+        node_idx <- which(node_data$node_num == mrca_node)
+
+        if (length(node_idx) > 0) {
+          mrca_location <- node_data$location[node_idx]
+        } else {
+          mrca_location <- NA
+        }
+
+        mrca_data <- rbind(mrca_data, data.frame(
+          tip1 = tips[i],
+          tip2 = tips[j],
+          mrca_node = mrca_node,
+          mrca_height = mrca_height,
+          mrca_location = mrca_location,
+          stringsAsFactors = FALSE
+        ))
+      }
+    }
+  }
+
+  return(mrca_data)
 }
 
 # Load true trees
@@ -70,9 +135,9 @@ cat("Loaded", length(true_trees), "true trees\n")
 results_list <- list()
 summary_data <- data.frame()
 
-for (i in seq_along(beast_files)) {
-  beast_file <- beast_files[i]
-  filename <- basename(beast_file)
+for (i in seq_along(beast_tree_files)) {
+  beast_tree_file <- beast_tree_files[i]
+  filename <- basename(beast_tree_file)
 
   # Extract clone ID from filename
   clone_match <- regmatches(filename, regexec("_([0-9]+)_tree_with_trait", filename))
@@ -82,11 +147,11 @@ for (i in seq_along(beast_files)) {
   }
   clone_id <- clone_match[[1]][2]
 
-  cat("Processing clone", clone_id, paste0("(", i, "/", length(beast_files), ")\n"))
+  cat("Processing clone", clone_id, paste0("(", i, "/", length(beast_tree_files), ")\n"))
 
   # Load BEAST tree
   beast_tree <- tryCatch({
-    treeio::read.beast(beast_file)
+    treeio::read.beast(beast_tree_file)
   }, error = function(e) {
     cat("  Error loading BEAST tree:", e$message, "\n")
     next
@@ -125,7 +190,7 @@ for (i in seq_along(beast_files)) {
 
   # -------------------------- Calculate metrics --------------------------
   # Tree heights - read BEAST height from log file
-  beast_height <- as.numeric(read_tree_height_from_log(beast_file))
+  beast_height <- as.numeric(read_tree_height_from_log(beast_tree_file))
   if (is.na(beast_height)) {
     cat("  Warning: Using phylo tree height as fallback\n")
     beast_height <- max(node.depth.edgelength(beast_pruned_phylo))
@@ -147,43 +212,43 @@ for (i in seq_along(beast_files)) {
   mrca_height_correlation <- NA
 
   if ("location" %in% colnames(beast_tree@data) && "location" %in% colnames(true_tree@data)) {
-    # Get node heights
-    beast_node_heights <- node.depth.edgelength(beast_pruned_phylo)
-    true_node_heights <- node.depth.edgelength(true_pruned_phylo)
+    # Extract MRCA data using the more robust function
+    beast_mrca_data <- extract_mrca_heights_and_locations(beast_tree, clean_tip_label = TRUE)
+    true_mrca_data <- extract_mrca_heights_and_locations(true_tree, clean_tip_label = FALSE)
 
-    # MRCA comparison for paired tips
-    n_tips <- length(common_tips)
-    if (n_tips >= 2) {
-      mrca_beast_heights <- numeric()
-      mrca_true_heights <- numeric()
-      location_matches <- numeric()
+    # Filter for common tips only
+    beast_mrca_filtered <- beast_mrca_data %>%
+      filter(tip1 %in% common_tips & tip2 %in% common_tips)
 
-      for (i in 1:(n_tips - 1)) {
-        for (j in (i + 1):n_tips) {
-          # Get MRCA nodes
-          beast_mrca <- getMRCA(beast_pruned_phylo, c(common_tips[i], common_tips[j]))
-          true_mrca <- getMRCA(true_pruned_phylo, c(common_tips[i], common_tips[j]))
+    true_mrca_filtered <- true_mrca_data %>%
+      filter(tip1 %in% common_tips & tip2 %in% common_tips)
 
-          if (!is.null(beast_mrca) && !is.null(true_mrca)) {
-            mrca_beast_heights <- c(mrca_beast_heights, beast_node_heights[beast_mrca])
-            mrca_true_heights <- c(mrca_true_heights, true_node_heights[true_mrca])
+    # Match pairs between beast and true trees
+    if (nrow(beast_mrca_filtered) > 0 && nrow(true_mrca_filtered) > 0) {
+      # Create matching keys
+      beast_mrca_filtered$pair_key <- paste(pmin(beast_mrca_filtered$tip1, beast_mrca_filtered$tip2),
+                                            pmax(beast_mrca_filtered$tip1, beast_mrca_filtered$tip2),
+                                            sep = "|")
+      true_mrca_filtered$pair_key <- paste(pmin(true_mrca_filtered$tip1, true_mrca_filtered$tip2),
+                                           pmax(true_mrca_filtered$tip1, true_mrca_filtered$tip2),
+                                           sep = "|")
 
-            # Check location match
-            beast_loc <- beast_tree@data[as.numeric(beast_tree@data$node) == beast_mrca, "location"]
-            true_loc <- true_tree@data[as.numeric(true_tree@data$node) == true_mrca, "location"]
+      # Merge on matching pairs
+      matched_data <- merge(beast_mrca_filtered, true_mrca_filtered,
+                            by = "pair_key", suffixes = c("_beast", "_true"))
 
-            if (length(beast_loc) > 0 && length(true_loc) > 0) {
-              location_matches <- c(location_matches,
-                                    ifelse(beast_loc[1] == true_loc[1], 1, 0))
-            }
-          }
-        }
-      }
-
-      # Calculate metrics
-      if (length(mrca_beast_heights) > 0) {
+      if (nrow(matched_data) > 0) {
+        # Calculate location accuracy
+        location_matches <- ifelse(matched_data$mrca_location_beast == matched_data$mrca_location_true, 1, 0)
         mrca_cell_type_accuracy <- mean(location_matches, na.rm = TRUE)
-        mrca_height_correlation <- cor(mrca_beast_heights, mrca_true_heights, use = "complete.obs")
+
+        # Calculate height correlation
+        mrca_height_correlation <- cor(matched_data$mrca_height_beast,
+                                       matched_data$mrca_height_true,
+                                       use = "complete.obs")
+
+        cat("  MRCA pairs analyzed:", nrow(matched_data), "\n")
+        cat("  Location accuracy:", round(mrca_cell_type_accuracy, 3), "\n")
       }
     }
   }
@@ -232,7 +297,7 @@ write.csv(summary_data, summary_file, row.names = FALSE)
 cat("\n=== Analysis Summary ===\n")
 cat("Configuration:", config_name, "\n")
 cat("Template:", template_name, "\n")
-cat("Clones processed:", length(results_list), "/", length(beast_files), "\n")
+cat("Clones processed:", length(results_list), "/", length(beast_tree_files), "\n")
 cat("Results saved to:", results_file, "\n")
 cat("Summary saved to:", summary_file, "\n")
 cat("========================\n")
