@@ -9,6 +9,7 @@ We perform simulation-based studies of B cell evolution by:
 4) Generate publication-ready figures and summaries
 
 ## Project structure
+```
 scripts/
 ├── 00_master_pipeline.sh
 ├── 01_simulate_data.sh
@@ -26,6 +27,7 @@ scripts/
 └── plotting
     ├── publication_plots_main.R
     └── tree_plotting.R
+```
 
 ## Usage
 ### Complete pipeline
