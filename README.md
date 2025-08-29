@@ -8,7 +8,7 @@ We perform simulation-based studies of B cell evolution by:
 3) Analyzing reconstruction accuracy of trees and ancestral cell types
 4) Generate publication-ready figures and summaries
 
-## Project structure
+## Repository structure
 ```
 scripts/
 ├── 00_master_pipeline.sh
@@ -32,10 +32,26 @@ scripts/
 ## Usage
 ### Complete pipeline
 Running the complete analysis pipeline:
-`bash scripts/00_master_pipeline.sh [simulation_name]`
+```
+bash scripts/00_master_pipeline.sh [simulation_name]
+```
 
-## Directory Structure
+### Individual steps
+1) Data simulation: `sbatch scripts/01_simulate_data.sh [simulation_name]`
+
+2) Beast running: `bash scripts/02_submit_beast_phases.sh [simulation_name]`
+
+3) Tree analysis: `bash scripts/03_tree_analysis_main.sh [simulation_name] [rev_suffix]`
+
+## Analysis Types
+The pipeline supports the following analysis types:
+- main_analysis: core phylogenetic analysis across all evolutionary configurations
+- sub_analysis*: subgroup analysis performed on various sampled timepoints to investigate the phenomenon of time-dependent rate decay
+- differentiation_analysis*: applying advanced three-state phylogenetic model to reconstruct the timing of cell differentiation
+
+## File Organization
 Files are organized in:
+```
 [simulation_name]/
 ├── data/                     
 │   ├── raw/
@@ -50,3 +66,4 @@ Files are organized in:
 │   │   ├── irrev/                 
 ├── logs/
 └── configs/
+```
