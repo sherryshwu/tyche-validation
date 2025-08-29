@@ -41,6 +41,17 @@ extract_template_and_clone <- function(filename) {
   return(list(template_name = "Unknown", clone_id = "1"))
 }
 
+# Create standardized directory structure
+create_plot_directories <- function(base_dir, plot_types) {
+  dirs <- list()
+  for (plot_type in plot_types) {
+    dir_path <- file.path(base_dir, plot_type)
+    dir.create(dir_path, recursive = TRUE, showWarnings = FALSE)
+    dirs[[plot_type]] <- dir_path
+  }
+  return(dirs)
+}
+
 # -------------------------- Plotting Utility Functions --------------------------
 # Standard color schemes
 get_location_colors <- function() {
@@ -56,7 +67,7 @@ save_metric_plot <- function(metric_col, y_label, title = NULL,
     ggplot(aes(x = model_display, y = !!sym(metric_col), fill = model_display)) +
     geom_boxplot(alpha = 0.7, outlier.shape = NA, linewidth = 0.3) +
     geom_jitter(width = 0.2, height = 0, size = 0.2) +
-    scale_color_brewer(palette = "Pastel1") +
+    scale_fill_brewer(palette = "Pastel1") +
     labs(x = "Model", y = y_label, fill = "Model", title = title) +
     theme_bw() +
     theme(legend.position = "none",

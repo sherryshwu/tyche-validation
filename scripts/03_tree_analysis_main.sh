@@ -231,8 +231,8 @@ echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID"
 echo ""
 echo "=== Step 5: Creating Publication Plots for Main Analysis ==="
 
-selected_models="EO_Fixed,EO_Est,IS_Est,MS_Fixed,MS_Est,SC_AR,UCLD_AR"
-
+selected_models="EO_Fixed,EO_Est,IS_Est,SC_AR,UCLD_AR"
+selected_configs="config_ratio_1to1_sel,config_ratio_1to1_neu"
 PUB_PLOTS_JOB_ID=$(sbatch --parsable \
     --dependency=afterok:${JOB_ID} \
     --cpus-per-task=2 \
@@ -246,7 +246,7 @@ PUB_PLOTS_JOB_ID=$(sbatch --parsable \
     source /optnfs/common/miniconda3/etc/profile.d/conda.sh
     conda activate r_phylo
     cd \"$PROJECT_ROOT\"
-    Rscript scripts/plotting/publication_plots_main.R \"$TREE_ANALYSIS_DIR\" \"$SIMULATION_NAME\" \"$ANALYSIS_TYPE\" \"$REV_SUFFIX\" \"$selected_models\"
+    Rscript scripts/plotting/publication_plots_main.R \"$TREE_ANALYSIS_DIR\" \"$SIMULATION_NAME\" \"$ANALYSIS_TYPE\" \"$REV_SUFFIX\" \"$selected_models\" \"$selected_configs\"
     ")
 
 echo "Publication plots job submitted with ID: $PUB_PLOTS_JOB_ID"

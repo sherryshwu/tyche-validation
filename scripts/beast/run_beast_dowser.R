@@ -419,11 +419,11 @@ if (analysis_scope %in% c("main_analysis", "sub_analysis")) {
   } else if (grepl("3state", template_id)) {
     # 3-state TyCHE model parameters
     TRAIT_RATE_MEAN_1 <- as.character(mean_gc_clock_rate)
-    TRAIT_RATE_MEAN_2 <- "0.0000001"
-    TRAIT_RATE_MEAN_3 <- "0.0000001"
-    TRAIT_RATE_SIGMA_1 <- as.character(0.01 * as.numeric(mean_gc_clock_rate))
-    TRAIT_RATE_SIGMA_2 <- as.character(10 * as.numeric(TRAIT_RATE_MEAN_2))
-    TRAIT_RATE_SIGMA_3 <- as.character(1 * as.numeric(TRAIT_RATE_MEAN_3))
+    TRAIT_RATE_MEAN_2 <- format(1e-6, scientific = F)
+    TRAIT_RATE_MEAN_3 <- format(1e-6, scientific = F)
+    TRAIT_RATE_SIGMA_1 <- as.character(0.01 * as.numeric(TRAIT_RATE_MEAN_1))
+    TRAIT_RATE_SIGMA_2 <- "0.001"
+    TRAIT_RATE_SIGMA_3 <- "0.001"
     RATE_INDICATORS <- "1 1 0 0 0 0"
     TRANSITION_RATE_ALPHA <- "0.1"
     TRANSITION_RATE_BETA <- "1.0"

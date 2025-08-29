@@ -12,8 +12,8 @@ source("scripts/analysis/tree_functions.R")
 
 # Get arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 4) {
-  cat("Usage: Rscript publication_plots.R tree_analysis_dir simulation_name analysis_type rev_suffix\n")
+if (length(args) < 6) {
+  cat("Usage: Rscript publication_plots.R tree_analysis_dir simulation_name analysis_type rev_suffix selected_models selected_configs\n")
   quit(status = 1)
 }
 
@@ -22,6 +22,7 @@ simulation_name <- args[2]
 analysis_type <- args[3]
 rev_suffix <- args[4]
 selected_models <- strsplit(args[5], ",")[[1]]
+selected_configs <- strsplit(args[6], ",")[[1]]
 
 cat("=== Creating Publication Plots ===\n")
 cat("Analysis directory:", tree_analysis_dir, "\n")
@@ -97,11 +98,15 @@ if (nrow(convergence_data) > 0) {
   }
 }
 
-conv_exclusions <- if (length(conv_rows) == 0) {
-  data.frame(config = character(), template_name = character(), clone_id = character(), stringsAsFactors = FALSE)
-} else {
-  unique(do.call(rbind, conv_rows))
+conv_exclusions_by_config <- data.frame()
+for (i in seq_len(nrow(convergence_data))) {
+  ids <- parse_clone_ids(convergence_data$unconverged_clone_ids[i])
+  if (length(ids) > 0) {
+    conv_exclusions_by_config <- rbind(conv_exclusions_by_config, 
+      data.frame(config = convergence_data$config_name[i], clone_id = ids))
+  }
 }
+conv_exclusions_by_config <- unique(conv_exclusions_by_config)
 
 conv_summary <- convergence_data %>%
   group_by(config_name, template_id, model_type) %>%
@@ -124,11 +129,17 @@ model_labels <- c(
 if (nrow(all_data) > 0) {
   # Make join keys comparable
   all_data <- all_data %>% mutate(clone_id = as.character(clone_id))
-  conv_exclusions <- conv_exclusions %>% mutate(clone_id = as.character(clone_id))
+  conv_exclusions_by_config <- conv_exclusions_by_config %>% mutate(clone_id = as.character(clone_id))
 
-  # Drop only the unconverged clones via anti_join
+  # Drop the unconverged clones for each configuration via anti_join
   filtered_data <- all_data %>%
-    anti_join(conv_exclusions, by = c("config", "template_name", "clone_id"))
+    # Filter out uncoverged clones
+    anti_join(conv_exclusions_by_config, by = c("config", "clone_id")) %>%
+    # Extract abbreviations for model names
+    mutate(model_short = get_model_short_name(template_name)) %>%
+    # Filter models and configs as selected
+    filter(model_short %in% selected_models) %>%
+    filter(config %in% selected_configs)
 
   dropped_n <- nrow(all_data) - nrow(filtered_data)
   if (dropped_n > 0) {
@@ -139,19 +150,14 @@ if (nrow(all_data) > 0) {
 
   summary_data <- filtered_data %>%
     pivot_wider(names_from = metric, values_from = value) %>%
-    # Calculate tree height proportional error
-    mutate(prop_error = (beast_tree_height - true_tree_height) / true_tree_height) %>%
-    # Extract abbreviations for model names
-    mutate(model_short = get_model_short_name(template_name)) %>%
-    filter(model_short %in% selected_models) %>%
     mutate(
+      # Calculate tree height proportional error
+      prop_error = (beast_tree_height - true_tree_height) / true_tree_height,
       mrca_cell_type_accuracy = 100 * mrca_cell_type_accuracy,
       clone_id = factor(clone_id, levels = as.character(1:20)),
       model_short = factor(model_short, levels = selected_models),
-      model_display = factor(model_labels[as.character(model_short)], levels = model_labels[selected_models])
-    ) %>%
-    # Extract ratio info for facet grid
-    mutate(
+      model_display = factor(model_labels[as.character(model_short)], levels = model_labels[selected_models]),
+      # Extract evolution type and sampling ratio info for facet grid
       facet_label = case_when(
         grepl("ratio_1to3", config) & grepl("_sel$", config) ~ "Selective Evolution\n1:3 GC:Other",
         grepl("ratio_1to3", config) & grepl("_neu$", config) ~ "Uniform Neutral Evolution\n1:3 GC:Other",
@@ -258,7 +264,7 @@ if (!is.null(plots$height) && !is.null(plots$rf_distance) && !is.null(plots$mrca
     )
 
   # Save using save_compact_plot with custom dimensions for 3x4 layout
-  combined_path <- file.path(pub_plots_dir, "combined_metrics.pdf")
+  combined_path <- file.path(pub_plots_dir, "combined_metrics_1to1.pdf")
   ggsave(combined_path, combined_plot, width = 7, height = 3.5)
 
   cat("✓ Combined 3x4 faceted plot saved to:", combined_path, "\n")

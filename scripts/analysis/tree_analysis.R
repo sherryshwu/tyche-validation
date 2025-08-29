@@ -46,7 +46,6 @@ read_tree_height_from_log <- function(beast_tree_file) {
     cat("  Warning: Log file not found:", basename(log_tsv_file), "\n")
     return(NA)
   }
-  # log <- fread(file_name, skip = 3, header=TRUE) %>% as.data.frame()
   # Read TSV file
   lines <- readLines(log_tsv_file, warn = FALSE)
   tree_height_line <- grep("^TreeHeight\\s+", lines, value = TRUE)
@@ -56,7 +55,7 @@ read_tree_height_from_log <- function(beast_tree_file) {
 }
 
 # Helper function for MRCA analysis
-extract_mrca_heights_and_locations <- function(tree, clean_tip_label = FALSE) {
+extract_mrca_locations <- function(tree, clean_tip_label = FALSE) {
   tree_phylo <- as.phylo(tree)
   tips <- tree_phylo$tip.label
 
@@ -66,7 +65,6 @@ extract_mrca_heights_and_locations <- function(tree, clean_tip_label = FALSE) {
   }
 
   n_tips <- length(tips)
-  node_heights <- node.depth.edgelength(tree_phylo)
 
   if ("location" %in% colnames(tree@data)) {
     node_data <- tree@data %>%
@@ -86,7 +84,6 @@ extract_mrca_heights_and_locations <- function(tree, clean_tip_label = FALSE) {
     tip1 = character(),
     tip2 = character(),
     mrca_node = numeric(),
-    mrca_height = numeric(),
     mrca_location = character(),
     stringsAsFactors = FALSE
   )
@@ -96,7 +93,6 @@ extract_mrca_heights_and_locations <- function(tree, clean_tip_label = FALSE) {
       mrca_node <- getMRCA(tree_phylo, c(tips[i], tips[j]))
 
       if (!is.null(mrca_node) && !is.na(mrca_node)) {
-        mrca_height <- node_heights[mrca_node]
         node_idx <- which(node_data$node_num == mrca_node)
 
         if (length(node_idx) > 0) {
@@ -109,7 +105,6 @@ extract_mrca_heights_and_locations <- function(tree, clean_tip_label = FALSE) {
           tip1 = tips[i],
           tip2 = tips[j],
           mrca_node = mrca_node,
-          mrca_height = mrca_height,
           mrca_location = mrca_location,
           stringsAsFactors = FALSE
         ))
@@ -209,12 +204,11 @@ for (i in seq_along(beast_tree_files)) {
 
   # MRCA cell type accuracy analysis
   mrca_cell_type_accuracy <- NA
-  mrca_height_correlation <- NA
 
   if ("location" %in% colnames(beast_tree@data) && "location" %in% colnames(true_tree@data)) {
     # Extract MRCA data using the more robust function
-    beast_mrca_data <- extract_mrca_heights_and_locations(beast_tree, clean_tip_label = TRUE)
-    true_mrca_data <- extract_mrca_heights_and_locations(true_tree, clean_tip_label = FALSE)
+    beast_mrca_data <- extract_mrca_locations(beast_tree, clean_tip_label = TRUE)
+    true_mrca_data <- extract_mrca_locations(true_tree, clean_tip_label = FALSE)
 
     # Filter for common tips only
     beast_mrca_filtered <- beast_mrca_data %>%
@@ -242,11 +236,6 @@ for (i in seq_along(beast_tree_files)) {
         location_matches <- ifelse(matched_data$mrca_location_beast == matched_data$mrca_location_true, 1, 0)
         mrca_cell_type_accuracy <- mean(location_matches, na.rm = TRUE)
 
-        # Calculate height correlation
-        mrca_height_correlation <- cor(matched_data$mrca_height_beast,
-                                       matched_data$mrca_height_true,
-                                       use = "complete.obs")
-
         cat("  MRCA pairs analyzed:", nrow(matched_data), "\n")
         cat("  Location accuracy:", round(mrca_cell_type_accuracy, 3), "\n")
       }
@@ -260,8 +249,7 @@ for (i in seq_along(beast_tree_files)) {
     true_tree_height = true_height,
     rf_distance = rf_distance,
     tips_analyzed = length(common_tips),
-    mrca_cell_type_accuracy = mrca_cell_type_accuracy,
-    mrca_height_correlation = mrca_height_correlation
+    mrca_cell_type_accuracy = mrca_cell_type_accuracy
   )
 
   results_list[[clone_id]] <- result
@@ -272,9 +260,9 @@ for (i in seq_along(beast_tree_files)) {
     template_name = template_name,
     clone_id = clone_id,
     metric = c("beast_tree_height", "true_tree_height", "rf_distance",
-               "mrca_cell_type_accuracy", "mrca_height_correlation", "tips_analyzed"),
+               "mrca_cell_type_accuracy", "tips_analyzed"),
     value = c(beast_height, true_height, rf_distance,
-              mrca_cell_type_accuracy, mrca_height_correlation, length(common_tips))
+              mrca_cell_type_accuracy, length(common_tips))
   )
 
   summary_data <- rbind(summary_data, summary_row)

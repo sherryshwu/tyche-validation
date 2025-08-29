@@ -27,7 +27,7 @@ job_row <- job_data[array_task_id, ]
 config_name <- job_row$config_name
 template_name <- job_row$template_name
 true_tree_file <- job_row$true_tree_file
-beast_files <- strsplit(job_row$beast_files, ";")[[1]]
+beast_tree_files <- strsplit(job_row$beast_tree_files, ";")[[1]]
 model_type <- job_row$model_type
 
 # Setup directories
@@ -73,13 +73,13 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
   })
 
   # Map clone IDs to beast files
-  beast_file_map <- list()
+  beast_tree_file_map <- list()
   clone_ids <- c()
 
   for (beast_tree_file in beast_tree_files) {
     extraction_result <- extract_template_and_clone(beast_tree_file)
     clone_id <- extraction_result$clone_id
-    beast_file_map[[clone_id]] <- beast_tree_file
+    beast_tree_file_map[[clone_id]] <- beast_tree_file
     clone_ids <- c(clone_ids, clone_id)
   }
 
@@ -98,7 +98,7 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
     tryCatch({
       cat("Processing clone", clone_id, "...\n")
 
-      beast_tree_file <- beast_file_map[[clone_id]]
+      beast_tree_file <- beast_tree_file_map[[clone_id]]
       if (is.null(beast_tree_file)) {
         cat(" No BEAST tree file for clone", clone_id, "\n")
         next
@@ -342,7 +342,7 @@ save_all_plots <- function(all_plots, plot_dirs, template_name, config_name) {
 
 # -------------------------- Main execution --------------------------
 create_all_tree_plots(
-  beast_tree_files = beast_files,
+  beast_tree_files = beast_tree_files,
   true_tree_file = true_tree_file,
   plots_dir = plots_base_dir,
   config_name = config_name,
