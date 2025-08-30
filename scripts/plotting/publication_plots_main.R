@@ -83,32 +83,35 @@ parse_clone_ids <- function(x) {
   unique(as.character(as.integer(parts)))      # normalize like "01" -> "1"
 }
 
-# Expand into (config, template, clone_id) rows using a simple loop
-conv_rows <- list()
-if (nrow(convergence_data) > 0) {
-  for (i in seq_len(nrow(convergence_data))) {
-    ids <- parse_clone_ids(as.character(convergence_data$unconverged_clone_ids[i]))
-    if (length(ids) == 0) next
-    conv_rows[[length(conv_rows) + 1]] <- data.frame(
-      config        = as.character(convergence_data$config_name[i]),
-      template_name = as.character(convergence_data$template_id[i]),
-      clone_id      = ids,
-      stringsAsFactors = FALSE
-    )
-  }
-}
+# Filter convergence data to selected models
+filtered_convergence_data <- convergence_data %>%
+  # Extract abbreviations for model names
+  mutate(model_short = get_model_short_name(template_id)) %>%
+  # Filter models and configs as selected
+  filter(model_short %in% selected_models) %>%
+  filter(config_name %in% selected_configs)
 
+# Build exclusions from selected models
 conv_exclusions_by_config <- data.frame()
-for (i in seq_len(nrow(convergence_data))) {
-  ids <- parse_clone_ids(convergence_data$unconverged_clone_ids[i])
-  if (length(ids) > 0) {
-    conv_exclusions_by_config <- rbind(conv_exclusions_by_config, 
-      data.frame(config = convergence_data$config_name[i], clone_id = ids))
+if (nrow(filtered_convergence_data) > 0) {
+  for (i in seq_len(nrow(filtered_convergence_data))) {
+    ids <- parse_clone_ids(filtered_convergence_data$unconverged_clone_ids[i])
+    if (length(ids) > 0) {
+      conv_exclusions_by_config <- rbind(conv_exclusions_by_config, 
+        data.frame(config = filtered_convergence_data$config_name[i], clone_id = ids))
+    }
   }
+  conv_exclusions_by_config <- unique(conv_exclusions_by_config)
+} else {
+  # Create empty data frame with proper structure if no convergence data
+  conv_exclusions_by_config <- data.frame(config = character(), clone_id = character())
 }
-conv_exclusions_by_config <- unique(conv_exclusions_by_config)
 
-conv_summary <- convergence_data %>%
+cat("Created", nrow(conv_exclusions_by_config), "exclusions from selected models only\n")
+print(conv_exclusions_by_config)
+
+# Create summary from the filtered data
+conv_summary <- filtered_convergence_data %>%
   group_by(config_name, template_id, model_type) %>%
   summarise(total_clones = first(total_clones),
             converged_clones = first(converged_clones),
@@ -134,12 +137,7 @@ if (nrow(all_data) > 0) {
   # Drop the unconverged clones for each configuration via anti_join
   filtered_data <- all_data %>%
     # Filter out uncoverged clones
-    anti_join(conv_exclusions_by_config, by = c("config", "clone_id")) %>%
-    # Extract abbreviations for model names
-    mutate(model_short = get_model_short_name(template_name)) %>%
-    # Filter models and configs as selected
-    filter(model_short %in% selected_models) %>%
-    filter(config %in% selected_configs)
+    anti_join(conv_exclusions_by_config, by = c("config", "clone_id"))
 
   dropped_n <- nrow(all_data) - nrow(filtered_data)
   if (dropped_n > 0) {
@@ -155,6 +153,9 @@ if (nrow(all_data) > 0) {
       prop_error = (beast_tree_height - true_tree_height) / true_tree_height,
       mrca_cell_type_accuracy = 100 * mrca_cell_type_accuracy,
       clone_id = factor(clone_id, levels = as.character(1:20)),
+      model_short = get_model_short_name(template_name)) %>%
+      filter(model_short %in% selected_models) %>%
+    mutate(
       model_short = factor(model_short, levels = selected_models),
       model_display = factor(model_labels[as.character(model_short)], levels = model_labels[selected_models]),
       # Extract evolution type and sampling ratio info for facet grid

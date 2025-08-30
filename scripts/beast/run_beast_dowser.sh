@@ -7,10 +7,10 @@
 #SBATCH --time=144:00:00
 #SBATCH --output=/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out
 #SBATCH --error=/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err
-#SBATCH --account=hoehnlab-share
-# #SBATCH --nodelist=t01
-# #SBATCH --partition=preempt_t01
-# #SBATCH --qos=lab_priority
+#SBATCH --account=hoehnlab
+#SBATCH --nodelist=t01
+#SBATCH --partition=preempt_t01
+#SBATCH --qos=lab_priority
 
 set -e
 
@@ -54,7 +54,7 @@ CLOCK_RATES_DIR="${RESULTS_BASE_DIR}/clock_rates"
 SCRATCH_BEAST_DIR="${SCRATCH_ROOT}/${simulation_run}/${analysis_scope}/${rev_suffix}/${model_type}"
 
 # Centralized logs directory
-LOG_DIR="${PROJECT_ROOT}/${simulation_run}/logs/${analysis_scope}"
+LOG_DIR="${PROJECT_ROOT}/${simulation_run}/logs/${analysis_scope}/beast_runs"
 
 # Create necessary directories
 mkdir -p "$RAW_DATA_DIR" "$PROCESSED_DATA_DIR" "$ANALYSIS_PROCESSED_DATA_DIR" "$DOWSER_PROCESSED_TREES_DIR" "$CONFIGS_DIR"

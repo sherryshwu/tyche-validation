@@ -1,19 +1,26 @@
 #!/bin/bash
 # Configuration
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
-simulation_run="tltt_08_20"
-analysis_scope="main_analysis"  # main_analysis, sub_analysis, differentiation_analysis
-reversible="false"               # true or false
-max_jobs_at_once=20              # how many jobs to run in parallel
+simulation_run="${1:-tltt_08_20}"
+analysis_scope="${2:-main_analysis}"   # main_analysis, sub_analysis, differentiation_analysis
+rev_suffix="${3:-irrev}"               # irrev or rev
+max_jobs_at_once=20                    # how many jobs to run in parallel
 
 # Script locations
 run_script="${PROJECT_ROOT}/scripts/beast/run_beast_dowser.sh"
 combo_script="${PROJECT_ROOT}/scripts/beast/create_beast_job_combinations.sh"
 
+# Convert rev_suffix to boolean
+if [[ "$rev_suffix" == "rev" ]]; then
+    reversible="true"
+else
+    reversible="false"
+fi
+
 echo "=== Submitting BEAST Analysis Jobs ==="
 echo "Simulation: $simulation_run"
 echo "Analysis: $analysis_scope"
-echo "Reversible: $reversible"
+echo "Reversible: $reversible ($rev_suffix)"
 echo "======================================="
 
 # Step 0: Generate job combinations

@@ -14,7 +14,9 @@ sbatch scripts/01_simulate_data.sh "$SIMULATION_NAME"
 # Step 2: Submit BEAST jobs in multiple phases for GC strict clock and TyCHE/competing models
 echo ""
 echo "=== Step 2: BEAST Analysis ==="
-bash scripts/02_submit_beast_phases.sh "$SIMULATION_NAME"
+bash scripts/02_submit_beast_phases.sh "$SIMULATION_NAME" main_analysis irrev
+bash scripts/02_submit_beast_phases.sh "$SIMULATION_NAME" main_analysis rev
+bash scripts/02_submit_beast_phases.sh "$SIMULATION_NAME" differentiation_analysis irrev
 
 # Step 3: Tree analysis for main_analysis
 echo ""

@@ -9,10 +9,10 @@ PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
 RESULTS_BASE_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/results/${ANALYSIS_TYPE}/${REV_SUFFIX}"
 TREE_ANALYSIS_DIR="${RESULTS_BASE_DIR}/tree_analysis"
 RAW_DATA_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/data/raw"
-LOG_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/logs/${ANALYSIS_TYPE}"
+LOG_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/logs/${ANALYSIS_TYPE}/tree_analysis"
 
 # Setup logging
-LOG_FILE="${PROJECT_ROOT}/${SIMULATION_NAME}/logs/${ANALYSIS_TYPE}/tree_analysis_${ANALYSIS_TYPE}_${REV_SUFFIX}_$(date +%Y%m%d_%H%M%S).log"
+LOG_FILE="${LOG_DIR}/tree_analysis_${ANALYSIS_TYPE}_${REV_SUFFIX}_$(date +%Y%m%d_%H%M%S).log"
 mkdir -p "$(dirname "$LOG_FILE")"
 
 # Redirect all output to both console and log file
@@ -168,16 +168,20 @@ fi
 
 echo "Using job list: $JOB_LIST_FILE"
 
+ANALYSIS_LOG_DIR="${LOG_DIR}/tree_analysis_jobs"
+mkdir -p "$ANALYSIS_LOG_DIR"
+
 JOB_ID=$(sbatch --parsable \
     --array=1-${TOTAL_JOBS}%10 \
     --cpus-per-task=4 \
     --mem-per-cpu=6gb \
     --time=2:00:00 \
     --job-name=tree-analysis-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
-    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
+    --output="${ANALYSIS_LOG_DIR}/tree_analysis_%A_%a.out" \
+    --error="${ANALYSIS_LOG_DIR}/tree_analysis_%A_%a.err" \
     --account=hoehnlab-share \
     --wrap="
+        echo \"Job \$SLURM_ARRAY_TASK_ID started: \$(date)\"
         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
@@ -186,10 +190,14 @@ JOB_ID=$(sbatch --parsable \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
             \"$TREE_ANALYSIS_DIR\"
+        
+        # Log job completion
+        echo \"Job \$SLURM_ARRAY_TASK_ID completed: \$(date)\"
     ")
 
 echo "Jobs submitted with ID: $JOB_ID"
 echo "Job list: $JOB_LIST_FILE"
+echo "Waiting for analysis jobs to complete before proceeding..."
 
 # =============================================================================
 # Step 3: Job status check
@@ -206,7 +214,7 @@ else
 fi
 
 # =============================================================================
-# Step 4: Create combined summary
+# Step 4: Create combined summary (depends on analysis jobs)
 echo ""
 echo "=== Step 4: Creating Combined Summary ===" 
 SUMMARY_JOB_ID=$(sbatch --parsable \
@@ -215,16 +223,18 @@ SUMMARY_JOB_ID=$(sbatch --parsable \
     --mem-per-cpu=2gb \
     --time=10:00 \
     --job-name=tree-analysis-summary-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A_%a.out" \
-    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A_%a.err" \
+    --output="${LOG_FILE}" \
+    --error="${LOG_FILE}" \
     --account=hoehnlab-share \
     --wrap="
+    echo \"=== Summary job started at \$(date) ===\" 
     source /optnfs/common/miniconda3/etc/profile.d/conda.sh
     conda activate r_phylo
     cd \"$PROJECT_ROOT\"
     python3 scripts/analysis/create_combined_summary.py \"$TREE_ANALYSIS_DIR\"
+    echo \"=== Summary job completed at \$(date) ===\" 
     ")
-echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID"
+echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID (logs to main file)"
 
 # =============================================================================
 # Step 5: Creating publication plots for main analysis
@@ -239,22 +249,26 @@ PUB_PLOTS_JOB_ID=$(sbatch --parsable \
     --mem-per-cpu=4gb \
     --time=30:00 \
     --job-name=pub-plots-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
-    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
+    --output="${LOG_FILE}" \
+    --error="${LOG_FILE}" \
     --account=hoehnlab-share \
     --wrap="
+    echo \"Publication plots job started: \$(date)\"
     source /optnfs/common/miniconda3/etc/profile.d/conda.sh
     conda activate r_phylo
     cd \"$PROJECT_ROOT\"
-    Rscript scripts/plotting/publication_plots_main.R \"$TREE_ANALYSIS_DIR\" \"$SIMULATION_NAME\" \"$ANALYSIS_TYPE\" \"$REV_SUFFIX\" \"$selected_models\" \"$selected_configs\"
+    Rscript scripts/plotting/publication_plots_main.R \"$TREE_ANALYSIS_DIR\" \"$SIMULATION_NAME\" \"$ANALYSIS_TYPE\" \"$REV_SUFFIX\" \"$selected_models\" \"$selected_configs\" 2>&1 | tee -a \"$LOG_FILE\"
+    echo \"=== Publication plots job completed: \$(date) === \"
     ")
 
-echo "Publication plots job submitted with ID: $PUB_PLOTS_JOB_ID"
+echo "Publication plots job submitted with ID: $PUB_PLOTS_JOB_ID (logs to main file)"
 
 # =============================================================================
 # Step 6: Submit Tree Plotting Jobs
 echo ""
 echo "=== Step 6: Submitting Tree Plotting Jobs ==="
+TREE_PLOTS_LOG_DIR="${LOG_DIR}/tree_plotting_jobs"
+mkdir -p "$TREE_PLOTS_LOG_DIR"
 
 PLOT_JOB_ID=$(sbatch --parsable \
     --dependency=afterok:${JOB_ID} \
@@ -263,25 +277,30 @@ PLOT_JOB_ID=$(sbatch --parsable \
     --mem-per-cpu=8gb \
     --time=1:00:00 \
     --job-name=tree-plots-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out" \
-    --error="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err" \
+    --output="${TREE_PLOTS_LOG_DIR}/tree_plots_%A_%a.out" \
+    --error="${TREE_PLOTS_LOG_DIR}/tree_plots_%A_%a.err" \
     --account=hoehnlab-share \
     --wrap="
+        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID started: \$(date)\" >> \"$LOG_FILE\"
         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
-        
-        # Tree plotting
         Rscript scripts/plotting/tree_plotting.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
-            \"$TREE_ANALYSIS_DIR\"
+            \"$TREE_ANALYSIS_DIR\" 2>&1 | tee -a \"$LOG_FILE\"
+        
+        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID completed: \$(date)\" >> \"$LOG_FILE\"
     ")
 
 echo "Tree plotting jobs submitted with ID: $PLOT_JOB_ID"
+echo "Individual job logs in: $TREE_PLOTS_LOG_DIR"
 
 echo ""
 echo "=== Tree Analysis Pipeline Completed: $(date) ==="
+echo "Main log file: $LOG_FILE"
+echo "Analysis job logs: $ANALYSIS_LOG_DIR/"
+echo "Tree plotting logs: $TREE_PLOTS_LOG_DIR/"
+echo ""
 echo "Results directory: $TREE_ANALYSIS_DIR"
 echo "Check publication plots in: $TREE_ANALYSIS_DIR/plots/publication"
-echo "Check scaled trees in: $TREE_ANALYSIS_DIR/plots/publication/scaled_trees"
