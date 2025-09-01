@@ -79,7 +79,7 @@ if (analysis_scope == "main_analysis") {
   template_dir_suffix <- "custom"
 } else if (analysis_scope == "differentiation_analysis") {
   trait_param <- "celltype"
-  template_dir_suffix <- "ken_templates"
+  template_dir_suffix <- if (model_type == "gc_strict_clock") "custom" else "ken_templates"
 }
 
 # ------------------ Helpers ------------------ #

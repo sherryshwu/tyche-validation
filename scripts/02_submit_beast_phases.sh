@@ -46,23 +46,32 @@ else
     job_file="${PROJECT_ROOT}/${simulation_run}/configs/beast_job_combinations_${analysis_scope}_gc_strict_clock.csv"
 fi
 
-if [[ ! -f "$job_file" ]]; then
-    echo "ERROR: Job file not found: $job_file"
-    exit 1
+if [[ -f "$job_file" ]]; then
+    gc_job_count=$(tail -n +2 "$job_file" | wc -l)
+    echo "Found $gc_job_count GC strict clock jobs"
+
+    # Submit the jobs
+    gc_job_id=$(sbatch --parsable --array=1-${gc_job_count}%${max_jobs_at_once} \
+        $run_script "$simulation_run" "$analysis_scope" "gc_strict_clock" "$reversible")
+
+    if [[ $? -eq 0 ]]; then
+        echo "GC strict clock jobs submitted with ID: $gc_job_id"
+    else
+        echo "Failed to submit GC strict clock jobs"
+        exit 1
+    fi
+else
+    echo "No GC strict clock job file found, skipping..."
+    gc_job_id=""
 fi
 
-gc_job_count=$(tail -n +2 "$job_file" | wc -l)
-echo "Found $gc_job_count GC strict clock jobs"
-
-# Submit the jobs
-gc_job_id=$(sbatch --parsable --array=1-${gc_job_count}%${max_jobs_at_once} \
-    $run_script "$simulation_run" "$analysis_scope" "gc_strict_clock" "$reversible")
-
-if [[ $? -eq 0 ]]; then
-    echo "GC strict clock jobs submitted with ID: $gc_job_id"
+# Determine dependency strategy based on analysis scope
+if [[ -n "$gc_job_id" ]]; then
+    dependency_flag="--dependency=afterok:${gc_job_id}"
+    echo "Using job dependencies (waiting for GC jobs: $gc_job_id)"
 else
-    echo "Failed to submit GC strict clock jobs"
-    exit 1
+    dependency_flag=""
+    echo "No job dependencies needed (no GC jobs submitted)"
 fi
 
 # Step 2: Submit TyCHE Models (depends on step 1)
@@ -81,11 +90,10 @@ if [[ -f "$tyche_job_file" ]]; then
     echo "Found $tyche_job_count TyCHE model jobs"
     
     # Submit with dependency on step 1
-    tyche_job_id=$(sbatch --parsable --dependency=afterok:${gc_job_id} \
+    tyche_job_id=$(sbatch --parsable ${dependency_flag} \
         --array=1-${tyche_job_count}%${max_jobs_at_once} \
         $run_script "$simulation_run" "$analysis_scope" "tyche_models" "$reversible")
-    # sbatch --array=1-${tyche_job_count}%${max_jobs_at_once} \
-    #     $run_script "$simulation_run" "$analysis_scope" "tyche_models" "$reversible"
+
     if [[ $? -eq 0 ]]; then
         echo "TyCHE model jobs submitted with ID: $tyche_job_id"
     else
@@ -109,11 +117,9 @@ if [[ -f "$competing_job_file" ]]; then
     echo "Found $competing_job_count competing model jobs"
     
     # Submit with dependency on step 1
-    competing_job_id=$(sbatch --parsable --dependency=afterok:${gc_job_id} \
+    competing_job_id=$(sbatch --parsable ${dependency_flag} \
         --array=1-${competing_job_count}%${max_jobs_at_once} \
         $run_script "$simulation_run" "$analysis_scope" "competing_models" "$reversible")
-    # sbatch --array=2-${competing_job_count} \
-    #     $run_script "$simulation_run" "$analysis_scope" "competing_models" "$reversible"
 
     if [[ $? -eq 0 ]]; then
         echo "✓ Competing model jobs submitted with ID: $competing_job_id"
