@@ -23,9 +23,13 @@ analysis_type <- args[3]
 rev_suffix <- args[4]
 selected_models <- strsplit(args[5], ",")[[1]]
 selected_configs <- strsplit(args[6], ",")[[1]]
+skip_convergence_filtering <- length(args) >= 7 && args[7] == "skip_convergence"
 
 cat("=== Creating Publication Plots ===\n")
 cat("Analysis directory:", tree_analysis_dir, "\n")
+if (skip_convergence_filtering) {
+  cat("NOTE: Skipping convergence filtering - plotting all clones\n")
+}
 
 # Setup output directories
 plots_dir <- file.path(tree_analysis_dir, "plots")
@@ -48,76 +52,82 @@ all_data <- read_csv(summary_file, show_col_types = FALSE)
 cat("Loaded", nrow(all_data), "data rows\n")
 
 # -------------------------- Load convergence data --------------------------
-cat("Loading convergence summaries...\n")
+if (!skip_convergence_filtering) {
+  cat("Loading convergence summaries...\n")
+  
+  # Load convergence summaries for different model types
+  convergence_files <- c(
+    file.path(dirname(tree_analysis_dir), "tyche_models", "summary", "tyche_models_convergence_summary.csv"),
+    file.path(dirname(tree_analysis_dir), "competing_models", "summary", "competing_models_convergence_summary.csv")
+  )
 
-# Load convergence summaries for different model types
-convergence_files <- c(
-  file.path(dirname(tree_analysis_dir), "tyche_models", "summary", "tyche_models_convergence_summary.csv"),
-  file.path(dirname(tree_analysis_dir), "competing_models", "summary", "competing_models_convergence_summary.csv")
-)
-
-convergence_data <- data.frame()
-for (conv_file in convergence_files) {
-  if (file.exists(conv_file)) {
-    temp_conv <- read_csv(conv_file, show_col_types = FALSE)
-    temp_conv$unconverged_clone_ids <- as.character(temp_conv$unconverged_clone_ids)
-    convergence_data <- bind_rows(convergence_data, temp_conv)
-    cat("Loaded convergence data from:", basename(conv_file), "\n")
-  } else {
-    cat("Warning: Convergence file not found:", conv_file, "\n")
-  }
-}
-
-if (nrow(convergence_data) == 0) {
-  cat("ERROR: No convergence data found. Cannot filter unconverged runs.\n")
-  quit(status = 1)
-}
-
-cat("Building clone-level exclusions from convergence summaries...\n")
-
-parse_clone_ids <- function(x) {
-  if (is.na(x) || x == "") return(character(0))
-  x <- gsub("[^0-9]", " ", x)                  # replace non-digits with spaces
-  parts <- unlist(strsplit(x, "\\s+"))
-  parts <- parts[nzchar(parts)]
-  unique(as.character(as.integer(parts)))      # normalize like "01" -> "1"
-}
-
-# Filter convergence data to selected models
-filtered_convergence_data <- convergence_data %>%
-  # Extract abbreviations for model names
-  mutate(model_short = get_model_short_name(template_id)) %>%
-  # Filter models and configs as selected
-  filter(model_short %in% selected_models) %>%
-  filter(config_name %in% selected_configs)
-
-# Build exclusions from selected models
-conv_exclusions_by_config <- data.frame()
-if (nrow(filtered_convergence_data) > 0) {
-  for (i in seq_len(nrow(filtered_convergence_data))) {
-    ids <- parse_clone_ids(filtered_convergence_data$unconverged_clone_ids[i])
-    if (length(ids) > 0) {
-      conv_exclusions_by_config <- rbind(conv_exclusions_by_config, 
-        data.frame(config = filtered_convergence_data$config_name[i], clone_id = ids))
+  convergence_data <- data.frame()
+  for (conv_file in convergence_files) {
+    if (file.exists(conv_file)) {
+      temp_conv <- read_csv(conv_file, show_col_types = FALSE)
+      temp_conv$unconverged_clone_ids <- as.character(temp_conv$unconverged_clone_ids)
+      convergence_data <- bind_rows(convergence_data, temp_conv)
+      cat("Loaded convergence data from:", basename(conv_file), "\n")
+    } else {
+      cat("Warning: Convergence file not found:", conv_file, "\n")
     }
   }
-  conv_exclusions_by_config <- unique(conv_exclusions_by_config)
+
+  if (nrow(convergence_data) == 0) {
+    cat("Warning: No convergence data found. Proceeding without filtering.\n")
+    conv_exclusions_by_config <- data.frame(config = character(), clone_id = character())
+  } else {
+    cat("Building clone-level exclusions from convergence summaries...\n")
+
+    parse_clone_ids <- function(x) {
+      if (is.na(x) || x == "") return(character(0))
+      x <- gsub("[^0-9]", " ", x)                  # replace non-digits with spaces
+      parts <- unlist(strsplit(x, "\\s+"))
+      parts <- parts[nzchar(parts)]
+      unique(as.character(as.integer(parts)))      # normalize like "01" -> "1"
+    }
+
+    # Filter convergence data to selected models
+    filtered_convergence_data <- convergence_data %>%
+      # Extract abbreviations for model names
+      mutate(model_short = get_model_short_name(template_id)) %>%
+      # Filter models and configs as selected
+      filter(model_short %in% selected_models) %>%
+      filter(config_name %in% selected_configs)
+
+    # Build exclusions from selected models
+    conv_exclusions_by_config <- data.frame()
+    if (nrow(filtered_convergence_data) > 0) {
+      for (i in seq_len(nrow(filtered_convergence_data))) {
+        ids <- parse_clone_ids(filtered_convergence_data$unconverged_clone_ids[i])
+        if (length(ids) > 0) {
+          conv_exclusions_by_config <- rbind(conv_exclusions_by_config, 
+            data.frame(config = filtered_convergence_data$config_name[i], clone_id = ids))
+        }
+      }
+      conv_exclusions_by_config <- unique(conv_exclusions_by_config)
+    } else {
+      # Create empty data frame with proper structure if no convergence data
+      conv_exclusions_by_config <- data.frame(config = character(), clone_id = character())
+    }
+
+    cat("Created", nrow(conv_exclusions_by_config), "exclusions from selected models only\n")
+    print(conv_exclusions_by_config)
+
+    # Create summary from the filtered data
+    conv_summary <- filtered_convergence_data %>%
+      group_by(config_name, template_id, model_type) %>%
+      summarise(total_clones = first(total_clones),
+                converged_clones = first(converged_clones),
+                .groups = "drop")
+    cat("\nConvergence Summary (per config-template-model):\n")
+    print(conv_summary)
+  }
+  
 } else {
-  # Create empty data frame with proper structure if no convergence data
+  cat("Skipping convergence filtering - plotting all clones...\n")
   conv_exclusions_by_config <- data.frame(config = character(), clone_id = character())
 }
-
-cat("Created", nrow(conv_exclusions_by_config), "exclusions from selected models only\n")
-print(conv_exclusions_by_config)
-
-# Create summary from the filtered data
-conv_summary <- filtered_convergence_data %>%
-  group_by(config_name, template_id, model_type) %>%
-  summarise(total_clones = first(total_clones),
-            converged_clones = first(converged_clones),
-            .groups = "drop")
-cat("\nConvergence Summary (per config-template-model):\n")
-print(conv_summary)
 
 model_labels <- c(
   "EO_Fixed" = "TyCHE\nfixed clocks",

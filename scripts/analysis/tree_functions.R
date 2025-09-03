@@ -74,6 +74,20 @@ get_standard_tree_colors <- function() {
   return(types)
 }
 
+# Standardize location labels between different datasets
+standardize_location_labels <- function(tree_data) {
+  if ("location" %in% colnames(tree_data)) {
+    tree_data$location <- case_when(
+      tree_data$location == "GC" ~ "germinal_center",
+      # tree_data$location == "germinal_center" ~ "germinal_center", 
+      # tree_data$location == "other" ~ "other",
+      tree_data$location == "GC+other" ~ "germinal_center+other",
+      TRUE ~ tree_data$location
+    )
+  }
+  return(tree_data)
+}
+
 save_metric_plot <- function(metric_col, y_label, title = NULL,
                              show_x_labels = TRUE, add_reference_line = FALSE,
                              reference_value = NULL) {

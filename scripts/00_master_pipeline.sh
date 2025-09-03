@@ -24,12 +24,19 @@ echo "=== Step 3: Tree Analysis (main_analysis) ==="
 bash scripts/03_tree_analysis_main.sh "$SIMULATION_NAME" irrev
 bash scripts/03_tree_analysis_main.sh "$SIMULATION_NAME" rev
 
-# To be finalized...
-echo "=== Step 4: Tree Analysis (sub_analysis) ==="
-bash scripts/03_tree_analysis_sub.sh "$SIMULATION_NAME" irrev
+# Step 4: Tree analysis for GC re-entry simulation
+echo ""
+echo "=== Step 4: Tree Analysis (gc_reentry_hunter) ==="
+bash scripts/03_tree_analysis_main.sh gc_reentry_hunter irrev
 
+# Step 5: Tree analysis for differentiation_analysis
+echo ""
 echo "=== Step 5: Tree Analysis (differentiation_analysis) ==="
 bash scripts/03_tree_analysis_differentiation.sh "$SIMULATION_NAME" irrev
+
+# To be finalized...
+echo "=== Step 6: Tree Analysis (sub_analysis) ==="
+bash scripts/03_tree_analysis_sub.sh "$SIMULATION_NAME" irrev
 
 echo ""
 echo "=== Master Pipeline Completed: $(date) ==="

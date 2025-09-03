@@ -179,6 +179,9 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
 
 plot_time_tree <- function(tree, title, location_colors) {
   tryCatch({
+    # Standardize location labels
+    tree@data <- standardize_location_labels(tree@data)
+    
     p <- ggtree(tree) +
       geom_point(aes(color = if ("location" %in% colnames(tree@data)) location else NULL), size = 2) +
       geom_treescale() +

@@ -244,7 +244,7 @@ echo "=== Step 5: Creating Publication Plots for Main Analysis ==="
 selected_models="EO_Fixed,EO_Est,IS_Est,SC_AR,UCLD_AR"
 selected_configs="config_ratio_1to1_sel,config_ratio_1to1_neu"
 PUB_PLOTS_JOB_ID=$(sbatch --parsable \
-    --dependency=afterok:${JOB_ID} \
+    --dependency=afterok:${SUMMARY_JOB_ID} \
     --cpus-per-task=2 \
     --mem-per-cpu=4gb \
     --time=30:00 \
@@ -271,7 +271,7 @@ TREE_PLOTS_LOG_DIR="${LOG_DIR}/tree_plotting_jobs"
 mkdir -p "$TREE_PLOTS_LOG_DIR"
 
 PLOT_JOB_ID=$(sbatch --parsable \
-    --dependency=afterok:${JOB_ID} \
+    --dependency=afterok:${SUMMARY_JOB_ID} \
     --array=1-${TOTAL_JOBS}%5 \
     --cpus-per-task=2 \
     --mem-per-cpu=8gb \
@@ -288,7 +288,8 @@ PLOT_JOB_ID=$(sbatch --parsable \
         Rscript scripts/plotting/tree_plotting.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
-            \"$TREE_ANALYSIS_DIR\" 2>&1 | tee -a \"$LOG_FILE\"
+            \"$TREE_ANALYSIS_DIR\" \
+            \"$ANALYSIS_TYPE\"
         
         echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID completed: \$(date)\" >> \"$LOG_FILE\"
     ")
