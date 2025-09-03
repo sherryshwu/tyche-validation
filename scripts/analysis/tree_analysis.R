@@ -55,6 +55,17 @@ read_tree_height_from_log <- function(beast_tree_file) {
 }
 
 # Helper function for MRCA analysis
+standardize_mrca_locations <- function(mrca_data) {
+  if ("mrca_location" %in% colnames(mrca_data)) {
+    mrca_data$mrca_location <- dplyr::case_when(
+      mrca_data$mrca_location == "GC" ~ "germinal_center",
+      mrca_data$mrca_location == "GC+other" ~ "germinal_center+other",
+      TRUE ~ mrca_data$mrca_location
+    )
+  }
+  mrca_data
+}
+
 extract_mrca_locations <- function(tree, clean_tip_label = FALSE) {
   tree_phylo <- as.phylo(tree)
   tips <- tree_phylo$tip.label
@@ -208,6 +219,9 @@ for (i in seq_along(beast_tree_files)) {
   if ("location" %in% colnames(beast_tree@data) && "location" %in% colnames(true_tree@data)) {
     # Extract MRCA data using the more robust function
     beast_mrca_data <- extract_mrca_locations(beast_tree, clean_tip_label = TRUE)
+    # Standardize BEAST MRCA location labels
+    beast_mrca_data <- standardize_mrca_locations(beast_mrca_data)
+
     true_mrca_data <- extract_mrca_locations(true_tree, clean_tip_label = FALSE)
 
     # Filter for common tips only

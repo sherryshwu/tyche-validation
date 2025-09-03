@@ -79,8 +79,6 @@ standardize_location_labels <- function(tree_data) {
   if ("location" %in% colnames(tree_data)) {
     tree_data$location <- case_when(
       tree_data$location == "GC" ~ "germinal_center",
-      # tree_data$location == "germinal_center" ~ "germinal_center", 
-      # tree_data$location == "other" ~ "other",
       tree_data$location == "GC+other" ~ "germinal_center+other",
       TRUE ~ tree_data$location
     )
