@@ -168,7 +168,6 @@ gc_strict_results_base_dir <- file.path(PROJECT_ROOT, simulation_run, "results",
 
 # Output directories
 beast_raw_output_dir <- create_dir(file.path(SCRATCH_ROOT, simulation_run, analysis_scope, rev_suffix, model_type, config_name))
-metrics_dir <- create_dir(file.path(results_base_dir, "metrics"))
 summary_dir <- create_dir(file.path(results_base_dir, "summary"))
 
 # Model-specific directories

@@ -11,37 +11,38 @@ suppressMessages({
 })
 # -------------------------- Command line Argument parsing --------------------------
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 3) {
-  cat("Usage: Rscript tree_plotting_runner.R job_list_csv array_task_id tree_analysis_dir\n")
+if (length(args) < 4) {
+  cat("Usage: Rscript tree_plotting.R job_list_csv array_task_id tree_analysis_dir analysis_type\n")
   quit(status = 1)
 }
 
 job_list_file <- args[1]
 array_task_id <- as.numeric(args[2])
 tree_analysis_dir <- args[3]
+analysis_type <- args[4]
 
 # Read job data
 job_data <- read.csv(job_list_file, stringsAsFactors = FALSE)
 job_row <- job_data[array_task_id, ]
 
+analysis_type <- job_row$analysis_type
 config_name <- job_row$config_name
 template_name <- job_row$template_name
 true_tree_file <- job_row$true_tree_file
 beast_tree_files <- strsplit(job_row$beast_tree_files, ";")[[1]]
-model_type <- job_row$model_type
 
 # Setup directories
 plots_base_dir <- file.path(tree_analysis_dir, "plots", "tree_plots")
 dir.create(plots_base_dir, recursive = TRUE, showWarnings = FALSE)
 
 cat("=== Tree Plotting Job", array_task_id, "===\n")
+cat("Analysis type:", analysis_type, "\n")
 cat("Config:", config_name, "\n")
 cat("Template:", template_name, "\n")
-cat("Model type:", model_type, "\n")
 
 # -------------------------- Plotting functions --------------------------
 create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
-                                  config_name, template_name) {
+                                  config_name, template_name, analysis_type) {
 
   cat("=== Creating comprehensive tree plots ===\n")
 
@@ -50,7 +51,11 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
     "time_trees", "cophylo_plots", "genetic_distance_trees", "combined_plots"
   ))
 
-  location_colors <- get_location_colors()
+  # BEAST trees use analysis-specific colors
+  beast_location_colors <- get_location_colors(analysis_type)
+
+  # True trees and genetic trees always use standard 2-value colors
+  standard_location_colors <- get_standard_tree_colors()
 
   # Load trees
   cat("Loading trees...\n")
@@ -113,8 +118,8 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
       }
 
       # 1. Time tree comparison
-      beast_plot <- plot_time_tree(beast_tree, paste("BEAST - Clone", clone_id), location_colors)
-      true_time_plot <- plot_time_tree(true_time_tree, paste("True Time - Clone", clone_id), location_colors)
+      beast_plot <- plot_time_tree(beast_tree, paste("BEAST - Clone", clone_id), beast_location_colors)
+      true_time_plot <- plot_time_tree(true_time_tree, paste("True Time - Clone", clone_id), standard_location_colors)
 
       comparison_plot <- beast_plot + true_time_plot +
         plot_layout(guides = "collect") &
@@ -130,7 +135,8 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
 
       # 2. Cophylogeny plot
       cophylo_plot <- create_cophylogeny_plot(beast_tree, true_time_tree, clone_id,
-                                              template_name, config_name, location_colors)
+                                              template_name, config_name,
+                                              beast_location_colors, standard_location_colors)
       if (!is.null(cophylo_plot)) {
         all_plots$cophylo[[clone_id]] <- cophylo_plot
       }
@@ -138,14 +144,13 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
       # 3. Genetic distance tree
       true_genetic_tree <- true_genetic_trees[[as.numeric(clone_id)]]
       if (!is.null(true_genetic_tree)) {
-        genetic_plot <- plot_genetic_tree(true_genetic_tree, clone_id, config_name, location_colors)
+        genetic_plot <- plot_genetic_tree(true_genetic_tree, clone_id, config_name)
         if (!is.null(genetic_plot)) {
           all_plots$genetic[[clone_id]] <- genetic_plot
         }
 
         # 4. Combined plot
-        genetic_plot_small <- plot_genetic_tree(true_genetic_tree, clone_id,
-                                                config_name, location_colors, compact = TRUE)
+        genetic_plot_small <- plot_genetic_tree(true_genetic_tree, clone_id, config_name, compact = TRUE)
 
         combined_plot <- beast_plot + true_time_plot + genetic_plot_small +
           plot_layout(ncol = 3, guides = "collect") &
@@ -190,7 +195,8 @@ plot_time_tree <- function(tree, title, location_colors) {
   })
 }
 
-plot_genetic_tree <- function(tree, clone_id, config_name, location_colors, compact = FALSE) {
+plot_genetic_tree <- function(tree, clone_id, config_name, compact = FALSE) {
+  location_colors <- get_standard_tree_colors()
   tryCatch({
     if (!"location" %in% colnames(tree@data)) {
       return(NULL)
@@ -217,7 +223,7 @@ plot_genetic_tree <- function(tree, clone_id, config_name, location_colors, comp
   })
 }
 
-create_cophylogeny_plot <- function(beast_tree, true_tree, clone_id, template_name, config_name, location_colors) {
+create_cophylogeny_plot <- function(beast_tree, true_tree, clone_id, template_name, config_name, beast_location_colors, true_location_colors) {
   tryCatch({
     # Convert to phylo objects
     beast_phylo <- as.phylo(beast_tree)
@@ -267,13 +273,13 @@ create_cophylogeny_plot <- function(beast_tree, true_tree, clone_id, template_na
     p1 <- ggtree(beast_tree_rotated, ladderize = FALSE) +
       geom_tippoint(aes(color = location), size = 1.5) +
       geom_nodepoint(aes(color = location), size = 1) +
-      scale_color_manual(values = location_colors) +
+      scale_color_manual(values = beast_location_colors) +
       theme_tree()
 
     p2 <- ggtree(true_tree_rotated, ladderize = FALSE) +
       geom_tippoint(aes(color = location), size = 1.5) +
       geom_nodepoint(aes(color = location), size = 1) +
-      scale_color_manual(values = location_colors) +
+      scale_color_manual(values = true_location_colors) +
       theme_tree()
 
     # Combine plots
@@ -286,7 +292,7 @@ create_cophylogeny_plot <- function(beast_tree, true_tree, clone_id, template_na
       geom_tippoint(data = d2, aes(color = location), size = 1.5) +
       geom_nodepoint(data = d2, aes(color = location), size = 1) +
       ggnewscale::new_scale_color() +
-      scale_color_manual(values = location_colors)
+      scale_color_manual(values = true_location_colors)
 
     # Add connecting lines if possible
     if ("label" %in% colnames(d1) && "label" %in% colnames(d2)) {
@@ -346,7 +352,8 @@ create_all_tree_plots(
   true_tree_file = true_tree_file,
   plots_dir = plots_base_dir,
   config_name = config_name,
-  template_name = template_name
+  template_name = template_name,
+  analysis_type = analysis_type
 )
 
 cat("✓ Tree plotting job", array_task_id, "completed\n")

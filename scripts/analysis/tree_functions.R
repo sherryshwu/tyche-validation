@@ -54,7 +54,21 @@ create_plot_directories <- function(base_dir, plot_types) {
 
 # -------------------------- Plotting Utility Functions --------------------------
 # Standard color schemes
-get_location_colors <- function() {
+get_location_colors <- function(analysis_type = "main_analysis") {
+  if (analysis_type %in% c("main_analysis", "sub_analysis")) {
+    types <- RColorBrewer::brewer.pal(3, "Set1")
+    names(types) <- c("germinal_center", "other", "germinal_center+other")
+  } else if (analysis_type == "differentiation_analysis") {
+    types <- RColorBrewer::brewer.pal(3, "Set2")
+    names(types) <- c("gc_b_cell", "plasma_cell", "memory_b_cell")
+  } else {
+    stop("Unknown analysis_type: use main_analysis, sub_analysis or differentiation_analysis")
+  }
+  return(types)
+}
+
+# Always uses 2-value scheme for non-beast trees
+get_standard_tree_colors <- function() {
   types <- RColorBrewer::brewer.pal(3, "Set1")
   names(types) <- c("germinal_center", "other", "germinal_center+other")
   return(types)

@@ -45,7 +45,6 @@ CONFIGS_DIR="${PROJECT_ROOT}/${simulation_run}/configs"
 RESULTS_BASE_DIR="${PROJECT_ROOT}/${simulation_run}/results/${analysis_scope}/${rev_suffix}/${model_type}"
 
 BEAST_RAW_OUTPUT_DIR="${RESULTS_BASE_DIR}/beast_raw_output"
-METRICS_DIR="${RESULTS_BASE_DIR}/metrics"
 SUMMARY_DIR="${RESULTS_BASE_DIR}/summary"
 CORRELATION_DIR="${RESULTS_BASE_DIR}/correlation_analysis"
 CLOCK_RATES_DIR="${RESULTS_BASE_DIR}/clock_rates"
@@ -58,7 +57,7 @@ LOG_DIR="${PROJECT_ROOT}/${simulation_run}/logs/${analysis_scope}/beast_runs"
 
 # Create necessary directories
 mkdir -p "$RAW_DATA_DIR" "$PROCESSED_DATA_DIR" "$ANALYSIS_PROCESSED_DATA_DIR" "$DOWSER_PROCESSED_TREES_DIR" "$CONFIGS_DIR"
-mkdir -p "$BEAST_RAW_OUTPUT_DIR" "$METRICS_DIR" "$SUMMARY_DIR" "$SCRATCH_BEAST_DIR" "$LOG_DIR"
+mkdir -p "$BEAST_RAW_OUTPUT_DIR" "$SUMMARY_DIR" "$SCRATCH_BEAST_DIR" "$LOG_DIR"
 
 if [[ "$model_type" == "gc_strict_clock" ]]; then
     mkdir -p "$CORRELATION_DIR" "$CLOCK_RATES_DIR"
