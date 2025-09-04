@@ -14,7 +14,9 @@ scripts/
 ├── 00_master_pipeline.sh
 ├── 01_simulate_data.sh
 ├── 02_submit_beast_phases.sh
+├── 03_tree_analysis_differentiation.sh
 ├── 03_tree_analysis_main.sh
+├── 04_create_publication_plots.sh
 ├── analysis
 │   ├── create_combined_summary.py
 │   ├── tree_analysis.R
@@ -24,9 +26,11 @@ scripts/
 │   ├── generate_configs.py
 │   ├── run_beast_dowser.R
 │   └── run_beast_dowser.sh
-└── plotting
-    ├── publication_plots_main.R
-    └── tree_plotting.R
+├── plotting
+│   ├── plot_differentiation_timing.R
+│   ├── publication_plots_main.R
+│   └── tree_plotting.R
+└── setup_gc_reentry_analysis.sh
 ```
 
 ## Usage

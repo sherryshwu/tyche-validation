@@ -89,10 +89,15 @@ standardize_location_labels <- function(tree_data) {
 save_metric_plot <- function(metric_col, y_label, title = NULL,
                              show_x_labels = TRUE, add_reference_line = FALSE,
                              reference_value = NULL) {
-  p <- summary_data %>%
-    ggplot(aes(x = model_display, y = !!sym(metric_col), fill = model_display)) +
+  facet_col <- if (plot_type == "main") "facet_label_with_sim" else "facet_label"
+  
+  plot_data <- summary_data
+  plot_data$metric_value <- plot_data[[metric_col]]
+
+  p <- ggplot(plot_data, aes(x = model_display, y = metric_value, fill = model_display)) +
     geom_boxplot(alpha = 0.7, outlier.shape = NA, linewidth = 0.3) +
     geom_jitter(width = 0.2, height = 0, size = 0.2) +
+    facet_wrap(as.formula(paste("~", facet_col)), scales = "fixed", nrow = 1) +
     scale_fill_brewer(palette = "Pastel1") +
     labs(x = "Model", y = y_label, fill = "Model", title = title) +
     theme_bw() +
@@ -120,11 +125,6 @@ save_metric_plot <- function(metric_col, y_label, title = NULL,
     )
   } else {
     p <- p + theme(axis.text.x = element_text(angle = 45, hjust = 1))
-  }
-
-  # Add faceting if facet_label exists
-  if ("facet_label" %in% names(summary_data)) {
-    p <- p + facet_wrap(~ facet_label, scales = "fixed", nrow = 1)
   }
 
   return(p)

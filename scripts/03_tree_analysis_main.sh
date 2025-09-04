@@ -189,7 +189,10 @@ JOB_ID=$(sbatch --parsable \
         Rscript scripts/analysis/tree_analysis.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
-            \"$TREE_ANALYSIS_DIR\"
+            \"$TREE_ANALYSIS_DIR\" \
+            \"$SIMULATION_NAME\" \
+            \"$ANALYSIS_TYPE\" \
+            \"$REV_SUFFIX\"
         
         # Log job completion
         echo \"Job \$SLURM_ARRAY_TASK_ID completed: \$(date)\"
@@ -217,14 +220,15 @@ fi
 # Step 4: Create combined summary (depends on analysis jobs)
 echo ""
 echo "=== Step 4: Creating Combined Summary ===" 
+SUMMARY_LOG="${LOG_DIR}/summary_job.log"
 SUMMARY_JOB_ID=$(sbatch --parsable \
     --dependency=afterok:${JOB_ID} \
     --cpus-per-task=1 \
     --mem-per-cpu=2gb \
     --time=10:00 \
     --job-name=tree-analysis-summary-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="${LOG_FILE}" \
-    --error="${LOG_FILE}" \
+    --output="${SUMMARY_LOG}" \
+    --error="${SUMMARY_LOG}" \
     --account=hoehnlab-share \
     --wrap="
     echo \"=== Summary job started at \$(date) ===\" 
@@ -234,39 +238,12 @@ SUMMARY_JOB_ID=$(sbatch --parsable \
     python3 scripts/analysis/create_combined_summary.py \"$TREE_ANALYSIS_DIR\"
     echo \"=== Summary job completed at \$(date) ===\" 
     ")
-echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID (logs to main file)"
+echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID"
 
 # =============================================================================
-# Step 5: Creating publication plots for main analysis
+# Step 5: Submit Tree Plotting Jobs
 echo ""
-echo "=== Step 5: Creating Publication Plots for Main Analysis ==="
-
-selected_models="EO_Fixed,EO_Est,IS_Est,SC_AR,UCLD_AR"
-selected_configs="config_ratio_1to1_sel,config_ratio_1to1_neu"
-PUB_PLOTS_JOB_ID=$(sbatch --parsable \
-    --dependency=afterok:${SUMMARY_JOB_ID} \
-    --cpus-per-task=2 \
-    --mem-per-cpu=4gb \
-    --time=30:00 \
-    --job-name=pub-plots-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="${LOG_FILE}" \
-    --error="${LOG_FILE}" \
-    --account=hoehnlab-share \
-    --wrap="
-    echo \"Publication plots job started: \$(date)\"
-    source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-    conda activate r_phylo
-    cd \"$PROJECT_ROOT\"
-    Rscript scripts/plotting/publication_plots_main.R \"$TREE_ANALYSIS_DIR\" \"$SIMULATION_NAME\" \"$ANALYSIS_TYPE\" \"$REV_SUFFIX\" \"$selected_models\" \"$selected_configs\" 2>&1 | tee -a \"$LOG_FILE\"
-    echo \"=== Publication plots job completed: \$(date) === \"
-    ")
-
-echo "Publication plots job submitted with ID: $PUB_PLOTS_JOB_ID (logs to main file)"
-
-# =============================================================================
-# Step 6: Submit Tree Plotting Jobs
-echo ""
-echo "=== Step 6: Submitting Tree Plotting Jobs ==="
+echo "=== Step 5: Submitting Tree Plotting Jobs ==="
 TREE_PLOTS_LOG_DIR="${LOG_DIR}/tree_plotting_jobs"
 mkdir -p "$TREE_PLOTS_LOG_DIR"
 
@@ -281,7 +258,7 @@ PLOT_JOB_ID=$(sbatch --parsable \
     --error="${TREE_PLOTS_LOG_DIR}/tree_plots_%A_%a.err" \
     --account=hoehnlab-share \
     --wrap="
-        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID started: \$(date)\" >> \"$LOG_FILE\"
+        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID started: \$(date)\"
         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
@@ -291,7 +268,7 @@ PLOT_JOB_ID=$(sbatch --parsable \
             \"$TREE_ANALYSIS_DIR\" \
             \"$ANALYSIS_TYPE\"
         
-        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID completed: \$(date)\" >> \"$LOG_FILE\"
+        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID completed: \$(date)\"
     ")
 
 echo "Tree plotting jobs submitted with ID: $PLOT_JOB_ID"
@@ -302,6 +279,4 @@ echo "=== Tree Analysis Pipeline Completed: $(date) ==="
 echo "Main log file: $LOG_FILE"
 echo "Analysis job logs: $ANALYSIS_LOG_DIR/"
 echo "Tree plotting logs: $TREE_PLOTS_LOG_DIR/"
-echo ""
 echo "Results directory: $TREE_ANALYSIS_DIR"
-echo "Check publication plots in: $TREE_ANALYSIS_DIR/plots/publication"

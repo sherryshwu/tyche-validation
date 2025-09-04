@@ -10,14 +10,17 @@ suppressMessages({
 
 # Get command line arguments
 args <- commandArgs(trailingOnly = TRUE)
-if (length(args) < 3) {
-  cat("Usage: Rscript tree_analysis.R job_list_csv array_task_id output_dir\n")
+if (length(args) < 6) {
+  cat("Usage: Rscript tree_analysis.R job_list_csv array_task_id output_dir simulation_name analysis_type rev_suffix\n")
   quit(status = 1)
 }
 
 job_list_file <- args[1]
 array_task_id <- as.numeric(args[2])
 output_dir <- args[3]
+simulation_name <- args[4]  # tltt_08_20, gc_reentry_hunter, etc.
+analysis_type <- args[5]    # main_analysis, differentiation_analysis, etc.
+rev_suffix <- args[6]       # irrev, rev
 
 # Read CSV and get the specific job
 job_data <- read.csv(job_list_file)
@@ -29,6 +32,9 @@ true_tree_file <- job_row$true_tree_file
 beast_tree_files <- strsplit(as.character(job_row$beast_tree_files), ";")[[1]]
 
 cat("=== Tree Analysis Started ===\n")
+cat("Simulation:", simulation_name, "\n")
+cat("Analysis:", analysis_type, "\n") 
+cat("Rev suffix:", rev_suffix, "\n")
 cat("Config:", config_name, "\n")
 cat("Template:", template_name, "\n")
 cat("BEAST files:", length(beast_tree_files), "\n")
@@ -204,6 +210,10 @@ for (i in seq_along(beast_tree_files)) {
 
   true_height <- max(node.depth.edgelength(true_pruned_phylo)) - 1
 
+  # Tree lengths
+  beast_tree_length <- sum(beast_pruned_phylo$edge.length)
+  true_tree_length <- sum(true_pruned_phylo$edge.length)
+
   # RF distance
   rf_distance <- tryCatch({
     dowser::calcRF(di2multi(beast_pruned_phylo, tol = 5),
@@ -261,6 +271,8 @@ for (i in seq_along(beast_tree_files)) {
     clone_id = clone_id,
     beast_tree_height = beast_height,
     true_tree_height = true_height,
+    beast_tree_length = beast_tree_length,
+    true_tree_length = true_tree_length,
     rf_distance = rf_distance,
     tips_analyzed = length(common_tips),
     mrca_cell_type_accuracy = mrca_cell_type_accuracy
@@ -270,17 +282,19 @@ for (i in seq_along(beast_tree_files)) {
 
   # Add to summary data
   summary_row <- data.frame(
+    simulation_name = simulation_name,
+    analysis_type = analysis_type,
+    rev_suffix = rev_suffix,
     config = config_name,
     template_name = template_name,
     clone_id = clone_id,
-    metric = c("beast_tree_height", "true_tree_height", "rf_distance",
-               "mrca_cell_type_accuracy", "tips_analyzed"),
-    value = c(beast_height, true_height, rf_distance,
-              mrca_cell_type_accuracy, length(common_tips))
+    metric = c("beast_tree_height", "true_tree_height", "beast_tree_length", "true_tree_length",
+               "rf_distance", "mrca_cell_type_accuracy", "tips_analyzed"),
+    value = c(beast_height, true_height, beast_tree_length, true_tree_length,
+              rf_distance, mrca_cell_type_accuracy, length(common_tips))
   )
 
   summary_data <- rbind(summary_data, summary_row)
-
   cat("  Completed clone", clone_id, "\n")
 }
 
