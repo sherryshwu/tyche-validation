@@ -73,7 +73,7 @@ MAIN_JOB_ID=$(sbatch --parsable \
     ")
 
 # =============================================================================
-# # Step 2: Supplementary Figure 1 (both simulations, 1:3 configs)
+# Step 2: Supplementary Figure 1 (both simulations, 1:3 configs)
 echo ""
 echo "=== Step 2: Creating Supplementary Figure 1 (Both Simulations, 1:3 configs) ==="
 echo "Target: Both simulations x 2 configs (1:3 sel and neu) = 4 panels"

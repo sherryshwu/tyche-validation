@@ -90,22 +90,22 @@ if (!skip_convergence_filtering) {
         file.path(base_dir, "tyche_models", "summary", "tyche_models_convergence_summary.csv"),
         file.path(base_dir, "competing_models", "summary", "competing_models_convergence_summary.csv")
       )
-      
+
       for (conv_file in convergence_files) {
         if (file.exists(conv_file)) {
           temp_conv <- read_csv(conv_file, show_col_types = FALSE)
           temp_conv$unconverged_clone_ids <- as.character(temp_conv$unconverged_clone_ids)
-          
+
           # Add tracking columns
           temp_conv$simulation_name <- sim_name
           temp_conv$rev_suffix <- rev_suffix
-          
+
           # Process exclusions for this specific combination
           filtered_convergence_data <- temp_conv %>%
             mutate(model_short = get_model_short_name(template_id)) %>%
             filter(model_short %in% selected_models) %>%
             filter(config_name %in% selected_configs)
-          
+
           if (nrow(filtered_convergence_data) > 0) {
             parse_clone_ids <- function(x) {
               if (is.na(x) || x == "") return(character(0))
@@ -114,7 +114,7 @@ if (!skip_convergence_filtering) {
               parts <- parts[nzchar(parts)]
               unique(as.character(as.integer(parts)))
             }
-            
+
             for (j in seq_len(nrow(filtered_convergence_data))) {
               ids <- parse_clone_ids(filtered_convergence_data$unconverged_clone_ids[j])
               if (length(ids) > 0) {
@@ -134,7 +134,7 @@ if (!skip_convergence_filtering) {
       }
     }
   }
-  
+
   conv_exclusions_by_config <- unique(conv_exclusions_by_config)
   cat("Total convergence exclusions:", nrow(conv_exclusions_by_config), "\n")
 } else {
@@ -160,22 +160,11 @@ if (nrow(all_combined_data) > 0) {
       simulation_name %in% simulation_names,
       rev_suffix %in% rev_suffixes
     )
-  
-  # Apply simulation filtering based on plot type
-  # if (plot_type == "supp_all_metrics") {
-  #   # Only primary simulation
-  #   filtered_data_initial <- filtered_data_initial %>%
-  #     filter(simulation_name == "tltt_08_20")
-  #     cat("Filtered to primary simulation only (tltt_08_20)\n")
-  #   } else {
-  #   # Both simulations for main and supp_tree_length
-  #   cat("Including both simulations\n")
-  # }
 
   # Make join keys comparable and filter out unconverged clones
-  filtered_data_initial <- filtered_data_initial %>% 
+  filtered_data_initial <- filtered_data_initial %>%
     mutate(clone_id = as.character(clone_id))
-  conv_exclusions_by_config <- conv_exclusions_by_config %>% 
+  conv_exclusions_by_config <- conv_exclusions_by_config %>%
     mutate(clone_id = as.character(clone_id))
 
   filtered_data <- filtered_data_initial %>%
@@ -199,12 +188,12 @@ if (nrow(all_combined_data) > 0) {
     filter(model_short %in% selected_models) %>%
     mutate(
       model_short = factor(model_short, levels = selected_models),
-      model_display = factor(model_labels[as.character(model_short)], 
-                           levels = model_labels[selected_models]),
+      model_display = factor(model_labels[as.character(model_short)],
+                             levels = model_labels[selected_models]),
       # Create facet labels
       facet_label = case_when(
         grepl("ratio_1to3", config) & grepl("_sel$", config) ~ "Selective Evolution\n1:3 GC:Other",
-        grepl("ratio_1to3", config) & grepl("_neu$", config) ~ "Uniform Neutral Evolution\n1:3 GC:Other", 
+        grepl("ratio_1to3", config) & grepl("_neu$", config) ~ "Uniform Neutral Evolution\n1:3 GC:Other",
         grepl("ratio_1to1", config) & grepl("_sel$", config) ~ "Selective Evolution\n1:1 GC:Other",
         grepl("ratio_1to1", config) & grepl("_neu$", config) ~ "Uniform Neutral Evolution\n1:1 GC:Other",
         TRUE ~ "other"
@@ -271,14 +260,14 @@ if (nrow(all_combined_data) > 0) {
 plots <- list()
 # Determine output directory and facet column
 if (plot_type == "main") {
- output_figure_dir <- pub_plots_dir
- facet_column <- "facet_label_with_sim"
+  output_figure_dir <- pub_plots_dir
+  facet_column <- "facet_label_with_sim"
 } else if (plot_type == "supp_all_metrics") {
- output_figure_dir <- supp_plots_dir
- facet_column <- "facet_label_with_sim"
+  output_figure_dir <- supp_plots_dir
+  facet_column <- "facet_label_with_sim"
 } else if (plot_type == "supp_tree_length") {
- output_figure_dir <- supp_plots_dir
- facet_column <- "facet_label_detailed"
+  output_figure_dir <- supp_plots_dir
+  facet_column <- "facet_label_detailed"
 }
 
 if (plot_type %in% c("main", "supp_all_metrics")) {
@@ -297,11 +286,11 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
       reference_value = 0,
       facet_col = facet_column
     ) + theme(
-        text = element_text(size = 8),
-        strip.text = element_text(size = 9)  # Keep strip text for top row
-      )
+      text = element_text(size = 8),
+      strip.text = element_text(size = 9)  # Keep strip text for top row
+    )
   }
-  
+
   if (length(summary_data$rf_distance) > 0) {
     plots$rf_distance <- save_metric_plot(
       metric_col = "rf_distance", 
@@ -315,7 +304,7 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
       strip.text = element_blank()  # Remove strip text for middle row
     )
   }
-  
+
   if (length(summary_data$mrca_cell_type_accuracy) > 0) {
     plots$mrca <- save_metric_plot(
       metric_col = "mrca_cell_type_accuracy",
@@ -329,23 +318,23 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
       strip.text = element_blank()  # Remove strip text for bottom row
     )
   }
-  
+
   # Save individual plots
   if (!is.null(plots$height)) {
     ggsave(file.path(output_figure_dir, paste0(plot_type, "_tree_height.pdf")),
            plots$height, width = 12, height = 8)
   }
-  
+
   if (!is.null(plots$rf_distance)) {
     ggsave(file.path(output_figure_dir, paste0(plot_type, "_rf_distance.pdf")),
            plots$rf_distance, width = 12, height = 8)
   }
-  
+
   if (!is.null(plots$mrca)) {
     ggsave(file.path(output_figure_dir, paste0(plot_type, "_mrca_accuracy.pdf")),
            plots$mrca, width = 12, height = 8)
   }
-  
+
   # Create combined plot
   if (length(plots) >= 3) {
     combined_plot <- plots$height / plots$rf_distance / plots$mrca +
@@ -355,10 +344,10 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
         strip.placement = "outside",
         plot.margin = margin(1, 2, 1, 2) # t, r, b, l
       )
-    
+
     ggsave(file.path(output_figure_dir, paste0(plot_type, "_combined_metrics.pdf")),
            combined_plot, width = 7, height = 3.5)
-    
+
     cat("✓ Main publication plots saved\n")
   }
 
@@ -371,20 +360,20 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
   if (length(summary_data$tree_length_prop_error) > 0) {
     tree_length_plot <- save_metric_plot(
       metric_col = "tree_length_prop_error",
-      y_label = "Tree Length\nProportional Error", 
+      y_label = "Tree Length\nProportional Error",
       show_x_labels = TRUE,
       add_reference_line = TRUE,
       reference_value = 0,
       facet_col = facet_column,
       nrow = 2,
       ncol = 4
-      ) +
+    ) +
       theme(
-          strip.background = element_blank(),
-          strip.placement = "outside",
-          plot.margin = margin(1, 2, 1, 2) # t, r, b, l
-        )
-    
+        strip.background = element_blank(),
+        strip.placement = "outside",
+        plot.margin = margin(1, 2, 1, 2) # t, r, b, l
+      )
+
     ggsave(file.path(output_figure_dir, paste0(plot_type, "_prop_error.pdf")),
            tree_length_plot, width = 10, height = 5)
   }
