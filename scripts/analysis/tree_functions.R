@@ -89,7 +89,7 @@ standardize_location_labels <- function(tree_data) {
 save_metric_plot <- function(metric_col, y_label, title = NULL,
                              show_x_labels = TRUE, add_reference_line = FALSE,
                              reference_value = NULL, facet_col = "facet_label_with_sim",
-                             nrow = 1, ncol = NULL) {  
+                             nrow = 1, ncol = NULL) {
   plot_data <- summary_data
   plot_data$metric_value <- plot_data[[metric_col]]
 
