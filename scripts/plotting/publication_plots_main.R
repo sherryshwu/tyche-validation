@@ -13,7 +13,11 @@ source("scripts/analysis/tree_functions.R")
 # Get arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 8) {
-  cat("Usage: Rscript publication_plots_enhanced.R summary_files simulation_names analysis_type rev_suffixes selected_models selected_configs plot_type output_dir [skip_convergence]\n")
+  cat("Usage: Rscript publication_plots.R summary_files simulation_names analysis_type rev_suffixes selected_models selected_configs plot_type output_dir [skip_convergence]\n")
+  cat("plot_type options:\n")
+  cat("  'main' - both primary and GC re-entry simulations, 1:1 configs, three metrics (height/RF/MRCA)\n")
+  cat("  'supp_all_metrics' - both primary and GC re-entry simulations, 1:3 configs, three metrics\n") 
+  cat("  'supp_tree_length' - both primary and GC re-entry simulations, all configs, tree length analysis\n")
   quit(status = 1)
 }
 
@@ -23,13 +27,14 @@ analysis_type <- args[3]
 rev_suffixes <- strsplit(args[4], ",")[[1]]
 selected_models <- strsplit(args[5], ",")[[1]]
 selected_configs <- strsplit(args[6], ",")[[1]]
-plot_type <- args[7]  # "main" or "supplementary"
+plot_type <- args[7]  # "main" or "supp_all_metrics" or "supp_tree_length"
 output_dir <- args[8]
 skip_convergence_filtering <- length(args) >= 9 && args[9] == "skip_convergence"
 
 cat("=== Creating", toupper(plot_type), "Publication Plots ===\n")
 cat("Summary files:", paste(summary_files, collapse=", "), "\n")
 cat("Simulations:", paste(simulation_names, collapse=", "), "\n")
+cat("Plot type:", plot_type, "\n")
 cat("Rev suffixes:", paste(rev_suffixes, collapse=", "), "\n")
 cat("Models:", paste(selected_models, collapse=", "), "\n")
 cat("Configs:", paste(selected_configs, collapse=", "), "\n")
@@ -72,7 +77,7 @@ cat("Total combined data rows:", nrow(all_combined_data), "\n")
 
 # -------------------------- Load convergence data --------------------------
 conv_exclusions_by_config <- data.frame(config = character(), clone_id = character(), 
-                                       simulation_name = character(), rev_suffix = character())
+                                        simulation_name = character(), rev_suffix = character())
 
 if (!skip_convergence_filtering) {
   cat("Loading convergence data...\n")
@@ -149,13 +154,24 @@ model_labels <- c(
 
 # -------------------------- Process and filter data --------------------------
 if (nrow(all_combined_data) > 0) {
-# Filter data based on selections
+  # Filter data based on selections
   filtered_data_initial <- all_combined_data %>%
     filter(
       simulation_name %in% simulation_names,
       rev_suffix %in% rev_suffixes
     )
   
+  # Apply simulation filtering based on plot type
+  # if (plot_type == "supp_all_metrics") {
+  #   # Only primary simulation
+  #   filtered_data_initial <- filtered_data_initial %>%
+  #     filter(simulation_name == "tltt_08_20")
+  #     cat("Filtered to primary simulation only (tltt_08_20)\n")
+  #   } else {
+  #   # Both simulations for main and supp_tree_length
+  #   cat("Including both simulations\n")
+  # }
+
   # Make join keys comparable and filter out unconverged clones
   filtered_data_initial <- filtered_data_initial %>% 
     mutate(clone_id = as.character(clone_id))
@@ -199,18 +215,52 @@ if (nrow(all_combined_data) > 0) {
         "Selective Evolution\n1:1 GC:Other", 
         "Uniform Neutral Evolution\n1:1 GC:Other"
       )),
-      # For main plots: create simulation-specific labels
-      facet_label_with_sim = if (plot_type == "main") {
+      # Create basic simulation-specific labels (for main and supp_all_metrics)
+      facet_label_with_sim = if (plot_type %in% c("main", "supp_all_metrics")) {
         case_when(
-          simulation_name == "gc_reentry_hunter" & grepl("_sel$", config) ~ "Selective Evolution\n(GC re-entry)",
-          simulation_name == "gc_reentry_hunter" & grepl("_neu$", config) ~ "Uniform Neutral Evolution\n(GC re-entry)", 
+          simulation_name == "gc_reentry_hunter" & grepl("_sel$", config) ~ "Selective Evolution (GC re-entry)",
+          simulation_name == "gc_reentry_hunter" & grepl("_neu$", config) ~ "Uniform Neutral Evolution (GC re-entry)",
           simulation_name == "tltt_08_20" & grepl("_sel$", config) ~ "Selective Evolution",
           simulation_name == "tltt_08_20" & grepl("_neu$", config) ~ "Uniform Neutral Evolution",
           TRUE ~ as.character(facet_label)
         )
       } else {
         as.character(facet_label)
-      }
+      },
+
+      # Create detailed labels with config info (for supp_tree_length)
+      facet_label_detailed = if (plot_type == "supp_tree_length") {
+        case_when(
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_sel" ~ "Selective Evolution (GC re-entry)\n1:1 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral Evolution (GC re-entry)\n1:1 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_sel" ~ "Selective Evolution (GC re-entry)\n1:3 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_neu" ~ "Uniform Neutral Evolution (GC re-entry)\n1:3 GC:Other",
+          simulation_name == "tltt_08_20" & config == "config_ratio_1to1_sel" ~ "Selective Evolution\n1:1 GC:Other",
+          simulation_name == "tltt_08_20" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral Evolution\n1:1 GC:Other",
+          simulation_name == "tltt_08_20" & config == "config_ratio_1to3_sel" ~ "Selective Evolution\n1:3 GC:Other",
+          simulation_name == "tltt_08_20" & config == "config_ratio_1to3_neu" ~ "Uniform Neutral Evolution\n1:3 GC:Other",
+          TRUE ~ as.character(facet_label)
+        )
+      } else {
+        as.character(facet_label)
+      },
+
+      # Set factor levels for each
+      facet_label_with_sim = factor(facet_label_with_sim, levels = c(
+        "Selective Evolution", "Uniform Neutral Evolution",
+        "Selective Evolution (GC re-entry)", "Uniform Neutral Evolution (GC re-entry)"
+      )),
+
+      facet_label_detailed = factor(facet_label_detailed, levels = c(
+        "Selective Evolution\n1:1 GC:Other", 
+        "Uniform Neutral Evolution\n1:1 GC:Other",
+        "Selective Evolution\n1:3 GC:Other", 
+        "Uniform Neutral Evolution\n1:3 GC:Other",
+        "Selective Evolution (GC re-entry)\n1:1 GC:Other", 
+        "Uniform Neutral Evolution (GC re-entry)\n1:1 GC:Other",
+        "Selective Evolution (GC re-entry)\n1:3 GC:Other", 
+        "Uniform Neutral Evolution (GC re-entry)\n1:3 GC:Other"
+      ))
     ) %>%
     filter(config %in% selected_configs)  # Apply config filter
   
@@ -219,10 +269,24 @@ if (nrow(all_combined_data) > 0) {
 
 # -------------------------- Main publication figures --------------------------
 plots <- list()
+# Determine output directory and facet column
 if (plot_type == "main") {
-  cat("Creating main publication figures...\n")
-  cat("Target: Two simulations x Two 1:1 configs = Four panels\n")
-  
+ output_figure_dir <- pub_plots_dir
+ facet_column <- "facet_label_with_sim"
+} else if (plot_type == "supp_all_metrics") {
+ output_figure_dir <- supp_plots_dir
+ facet_column <- "facet_label_with_sim"
+} else if (plot_type == "supp_tree_length") {
+ output_figure_dir <- supp_plots_dir
+ facet_column <- "facet_label_detailed"
+}
+
+if (plot_type %in% c("main", "supp_all_metrics")) {
+  cat("Creating three-metric publication figures...\n")
+  cat("Target for main: Two simulations x Two 1:1 configs = Four panels\n")
+  cat("Target for supp_all_metrics: Two simulations x Two 1:3 configs = Four panels\n")
+  cat("Using facet column:", facet_column, "\n")
+
   # Create individual plots
   if (length(summary_data$tree_height_prop_error) > 0) {
     plots$height <- save_metric_plot(
@@ -230,10 +294,9 @@ if (plot_type == "main") {
       y_label = "Tree Height\nProportional Error",
       show_x_labels = FALSE,
       add_reference_line = TRUE,
-      reference_value = 0
-    )
-    plots$height <- plots$height +
-      theme(
+      reference_value = 0,
+      facet_col = facet_column
+    ) + theme(
         text = element_text(size = 8),
         strip.text = element_text(size = 9)  # Keep strip text for top row
       )
@@ -245,9 +308,9 @@ if (plot_type == "main") {
       y_label = "RF Distance",
       show_x_labels = FALSE,
       add_reference_line = TRUE,
-      reference_value = 0
-    )
-    plots$rf_distance <- plots$rf_distance + theme(
+      reference_value = 0,
+      facet_col = facet_column
+    ) + theme(
       text = element_text(size = 8),
       strip.text = element_blank()  # Remove strip text for middle row
     )
@@ -259,9 +322,9 @@ if (plot_type == "main") {
       y_label = "Ancestral Cell\nType Accuracy (%)",
       show_x_labels = TRUE,
       add_reference_line = TRUE,
-      reference_value = 100
-    )
-    plots$mrca <- plots$mrca + theme(
+      reference_value = 100,
+      facet_col = facet_column
+    ) + theme(
       text = element_text(size = 8),
       strip.text = element_blank()  # Remove strip text for bottom row
     )
@@ -269,35 +332,41 @@ if (plot_type == "main") {
   
   # Save individual plots
   if (!is.null(plots$height)) {
-    ggsave(file.path(pub_plots_dir, "main_tree_height_comparison.pdf"),
+    ggsave(file.path(output_figure_dir, paste0(plot_type, "_tree_height.pdf")),
            plots$height, width = 12, height = 8)
   }
   
   if (!is.null(plots$rf_distance)) {
-    ggsave(file.path(pub_plots_dir, "main_rf_distance_comparison.pdf"),
+    ggsave(file.path(output_figure_dir, paste0(plot_type, "_rf_distance.pdf")),
            plots$rf_distance, width = 12, height = 8)
   }
   
   if (!is.null(plots$mrca)) {
-    ggsave(file.path(pub_plots_dir, "main_mrca_accuracy_comparison.pdf"),
+    ggsave(file.path(output_figure_dir, paste0(plot_type, "_mrca_accuracy.pdf")),
            plots$mrca, width = 12, height = 8)
   }
   
   # Create combined plot
   if (length(plots) >= 3) {
     combined_plot <- plots$height / plots$rf_distance / plots$mrca +
-      plot_layout(heights = c(1, 1, 1))
+      plot_layout(heights = c(1, 1, 1)) &
+      theme(
+        strip.background = element_blank(),
+        strip.placement = "outside",
+        plot.margin = margin(1, 2, 1, 2) # t, r, b, l
+      )
     
-    ggsave(file.path(pub_plots_dir, "main_combined_metrics.pdf"),
+    ggsave(file.path(output_figure_dir, paste0(plot_type, "_combined_metrics.pdf")),
            combined_plot, width = 7, height = 3.5)
     
     cat("✓ Main publication plots saved\n")
   }
 
-} else if (plot_type == "supplementary") {
-  cat("Creating supplementary figures...\n")
-  cat("Target: One simulation x Four 1:3 configs = Four panels\n")
-  
+} else if (plot_type == "supp_tree_length") {
+  cat("Creating supplementary figures for tree length...\n")
+  cat("Target: Both simulations x Four configs = Eight panels\n")
+  cat("Using facet column:", facet_column, "\n")
+
   # Tree length proportional error analysis
   if (length(summary_data$tree_length_prop_error) > 0) {
     tree_length_plot <- save_metric_plot(
@@ -305,11 +374,19 @@ if (plot_type == "main") {
       y_label = "Tree Length\nProportional Error", 
       show_x_labels = TRUE,
       add_reference_line = TRUE,
-      reference_value = 0
-    )
+      reference_value = 0,
+      facet_col = facet_column,
+      nrow = 2,
+      ncol = 4
+      ) +
+      theme(
+          strip.background = element_blank(),
+          strip.placement = "outside",
+          plot.margin = margin(1, 2, 1, 2) # t, r, b, l
+        )
     
-    ggsave(file.path(supp_plots_dir, "tree_length_prop_error.pdf"),
-           tree_length_plot, width = 10, height = 8)
+    ggsave(file.path(output_figure_dir, paste0(plot_type, "_prop_error.pdf")),
+           tree_length_plot, width = 10, height = 5)
   }
   cat("✓ Supplementary plots saved\n")
 }
