@@ -15,13 +15,14 @@ source("scripts/analysis/tree_functions.R")
 # -------------------------- Command line Argument parsing --------------------------
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 3) {
-  cat("Usage: Rscript plot_differentiation_timing.R job_list_csv array_task_id tree_analysis_dir\n")
+  cat("Usage: Rscript plot_differentiation_timing.R job_list_csv array_task_id tree_analysis_dir pub_plots_dir\n")
   quit(status = 1)
 }
 
 job_list_file <- args[1]
 array_task_id <- as.numeric(args[2])
 tree_analysis_dir <- args[3]
+pub_plots_dir <- args[4]
 
 # Read job data
 job_data <- read.csv(job_list_file, stringsAsFactors = FALSE)
@@ -48,7 +49,7 @@ normalize_tip <- function(x) {
   tmp <- tolower(stringr::str_replace_all(x, "[ _]", ""))
   case_when(
     tmp %in% c("memorybcell", "memory_b_cell") ~ "Memory B Cell",
-    tmp %in% c("plasmacell", "plasma_cell") ~ "Plasma Cell", 
+    tmp %in% c("plasmacell", "plasma_cell") ~ "Plasma Cell",
     tmp %in% c("gcbcell", "gc", "default", "gc_b_cell") ~ "Germinal Center",
     TRUE ~ x
   )
@@ -57,11 +58,11 @@ normalize_tip <- function(x) {
 # Find differentiation points by walking up the tree
 getDiffPoint <- function(tree, node) {
   type <- filter(tree@data, node == !!node)$location
-  edge <- tree@phylo$edge[tree@phylo$edge[,2] == node,]
+  edge <- tree@phylo$edge[tree@phylo$edge[, 2] == node, ]
 
   if (length(edge) == 0) {
-    return(data.frame(diffnode = node, type = "root", 
-                     height = filter(tree@data, node == !!node)$height))
+    return(data.frame(diffnode = node, type = "root",
+                      height = filter(tree@data, node == !!node)$height))
   }
 
   parent <- edge[1]
@@ -82,11 +83,11 @@ getDiffPoints <- function(tree) {
     tip_node <- which(tree@phylo$tip.label == tip)
     tip_data <- filter(tree@data, node == tip_node)
     diff_point <- getDiffPoint(tree, tip_node)
-    
+
     temp <- data.frame(tip = tip, tip_type = tip_data$location, tip_height = tip_data$height)
     diffpoints <- rbind(diffpoints, cbind(temp, diff_point))
   }
-  
+
   diffpoints$height <- as.numeric(diffpoints$height)
   diffpoints$tip_height <- as.numeric(diffpoints$tip_height)
   diffpoints
@@ -98,16 +99,16 @@ load_true_timing <- function(true_tree_file) {
     cat("Warning: True tree file not found:", true_tree_file, "\n")
     return(data.frame())
   }
-  
+
   cat("Loading true timing data from:", true_tree_file, "\n")
-  
+
   tryCatch({
     true_trees <- treeio::read.beast(true_tree_file)
     true_data <- data.frame()
-    
+
     for (clone_id in seq_along(true_trees)) {
       tree <- true_trees[[clone_id]]
-      
+
       # Extract time_of_differentiation data
       if ("time_of_differentiation" %in% colnames(tree@data)) {
         clone_data <- tree@data %>%
@@ -118,18 +119,18 @@ load_true_timing <- function(true_tree_file) {
                  tip_type = normalize_tip(celltype),
                  tree_height = max(as.numeric(generation)) - 1,
                  # Convert time_of_differentiation to numeric
-                 rel_differentiation_time = - 1 + as.numeric(time_of_differentiation) / tree_height,
+                 rel_differentiation_time = as.numeric(time_of_differentiation) / tree_height,
                  panel = "True") %>%
           filter(tip_type %in% c("Memory B Cell", "Plasma Cell")) %>%
           select(clone_id, tip_type, rel_differentiation_time, panel)
-        
+
         true_data <- rbind(true_data, clone_data)
       }
     }
-    
+
     cat("Loaded true timing data for", length(unique(true_data$clone_id)), "clones\n")
     return(true_data)
-    
+
   }, error = function(e) {
     cat("Error loading true timing data:", e$message, "\n")
     return(data.frame())
@@ -138,9 +139,9 @@ load_true_timing <- function(true_tree_file) {
 
 # -------------------------- Main plotting function --------------------------
 create_differentiation_timing_plots <- function() {
-  
+
   cat("Processing BEAST tree files for template:", template_name, "\n")
-  
+
   # Map clone IDs to beast files
   beast_tree_file_map <- list()
   clone_ids <- c()
@@ -154,16 +155,16 @@ create_differentiation_timing_plots <- function() {
 
   clone_ids <- unique(clone_ids[order(as.numeric(clone_ids))])
   cat("Found", length(clone_ids), "clones:", paste(clone_ids, collapse = ", "), "\n")
-  
+
   # Process each clone
   all_diffs <- list()
   tree_heights <- c()
-  
+
   for (clone_id in clone_ids) {
     beast_tree_file <- beast_tree_file_map[[clone_id]]
-    
+
     cat("Processing clone", clone_id, "...\n")
-    
+
     tryCatch({
       beast_tree <- read.beast(beast_tree_file)
       diffs <- getDiffPoints(beast_tree)
@@ -178,29 +179,29 @@ create_differentiation_timing_plots <- function() {
       cat("  Error processing clone", clone_id, ":", e$message, "\n")
     })
   }
-  
+
   # Combine data
   estimated_diffs <- do.call(rbind, all_diffs)
-  
+
   # Calculate relative heights and clean data
   estimated_diffs <- estimated_diffs %>%
     mutate(
       tree_height = tree_heights[as.character(clone_id)],
       relative_height = height / tree_height,
       tip_type = normalize_tip(tip_type),
-      differentiation_time = -height,
-      rel_differentiation_time = -relative_height
+      differentiation_time = - height,
+      rel_differentiation_time = - relative_height + 1
     ) %>%
     filter(tip_type %in% c("Memory B Cell", "Plasma Cell"))
-  
+
   cat("Processed", length(unique(estimated_diffs$clone_id)), "clones successfully\n")
-  
+
   # Load true data
   true_data <- load_true_timing(true_tree_file)
-  
+
   # Create plots
   colors <- c("Memory B Cell" = "#E69F00", "Plasma Cell" = "#0173B2")
-  
+
   # Plot 1: Estimated relative timing
   p1 <- ggplot(estimated_diffs, aes(x = rel_differentiation_time, y = tip_type)) +
     geom_boxplot(aes(fill = tip_type), alpha = 0.7, outlier.shape = NA) +
@@ -209,11 +210,11 @@ create_differentiation_timing_plots <- function() {
     scale_color_manual(values = colors) +
     theme_bw() +
     labs(
-      x = "Relative Differentiation Time (-1 = root, 0 = present)",
+      x = "Relative Differentiation Time (0 = root, 1 = present)",
       y = "Cell Type"
     ) +
     theme(legend.position = "none")
-  
+
   # Plot 2: By clone
   p2 <- ggplot(estimated_diffs, aes(x = rel_differentiation_time, y = tip_type)) +
     geom_boxplot(outlier.shape = NA) +
@@ -228,15 +229,15 @@ create_differentiation_timing_plots <- function() {
       y = "Cell Type"
     ) +
     theme(legend.position = "none")
-  
+
   plots_to_save <- list(p1, p2)
-  
+
   # Plot 3: Estimated vs True
   if (nrow(true_data) > 0) {
     estimated_for_comparison <- estimated_diffs %>%
       select(clone_id, tip_type, rel_differentiation_time) %>%
       mutate(panel = "Estimated")
-    
+
     combined_data <- rbind(
       estimated_for_comparison,
       true_data %>% select(clone_id, tip_type, rel_differentiation_time, panel)
@@ -245,7 +246,7 @@ create_differentiation_timing_plots <- function() {
         panel = factor(panel, levels = c("True", "Estimated")),
         tip_type = factor(tip_type, levels = c("Memory B Cell", "Plasma Cell"))
       )
-    
+
     p3 <- ggplot(combined_data, aes(x = rel_differentiation_time, y = tip_type)) +
       geom_boxplot(aes(fill = tip_type), alpha = 0.7, outlier.shape = NA) +
       geom_jitter(aes(color = tip_type), width = 0, height = 0.1, size = 0.3) +
@@ -254,25 +255,24 @@ create_differentiation_timing_plots <- function() {
       scale_color_manual(values = colors) +
       theme_bw() +
       labs(
-        x = "Relative Differentiation Time (-1 = root, 0 = present)",
+        x = "Relative Differentiation Time (0 = root, 1 = present)",
         y = "Cell Type"
       ) +
       theme(
         legend.position = "none",
         strip.placement = "outside"
       )
-    
+
     plots_to_save <- list(p1, p2, p3)
 
     # Save compact version
-    compact_file <- file.path(plots_base_dir, 
-                            paste0("compact_differentiation_comparison.pdf"))
+    compact_file <- file.path(pub_plots_dir, paste0("compact_differentiation_timing.pdf"))
     save_compact_plot(p3, compact_file, width = 3.4, height = 1.7)
 
   }
-  
+
   # Save all plots using the utility function
-  plot_file <- file.path(plots_base_dir, paste0(config_name, "_differentiation_timing.pdf"))
+  plot_file <- file.path(plots_base_dir, paste0(config_name, "_all_differentiation_timing.pdf"))
   save_plots_to_pdf(plots_to_save, plot_file, width = 12, height = 8)
 
   # Summary statistics
@@ -287,14 +287,14 @@ create_differentiation_timing_plots <- function() {
       sd_rel_time = sd(relative_time, na.rm = TRUE),
       .groups = 'drop'
     )
-  
-  summary_file <- file.path(plots_base_dir, 
-                           paste0(config_name, "_", template_name, "_timing_summary.csv"))
+
+  summary_file <- file.path(plots_base_dir,
+                            paste0(config_name, "_", template_name, "_timing_summary.csv"))
   write_csv(summary_stats, summary_file)
-  
+
   cat("Plots saved to:", plot_file, "\n")
   cat("Summary saved to:", summary_file, "\n")
-  
+
   return(list(estimated = estimated_diffs, true = true_data, summary = summary_stats))
 }
 

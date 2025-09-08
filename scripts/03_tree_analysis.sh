@@ -2,7 +2,7 @@
 # Get parameters
 SIMULATION_NAME="${1:-tltt_08_20}"
 REV_SUFFIX="${2:-irrev}"
-ANALYSIS_TYPE="differentiation_analysis"
+ANALYSIS_TYPE="${3:-main_analysis}"
 
 # Setup paths
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
@@ -189,7 +189,10 @@ JOB_ID=$(sbatch --parsable \
         Rscript scripts/analysis/tree_analysis.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
-            \"$TREE_ANALYSIS_DIR\"
+            \"$TREE_ANALYSIS_DIR\" \
+            \"$SIMULATION_NAME\" \
+            \"$ANALYSIS_TYPE\" \
+            \"$REV_SUFFIX\"
         
         # Log job completion
         echo \"Job \$SLURM_ARRAY_TASK_ID completed: \$(date)\"
@@ -217,14 +220,15 @@ fi
 # Step 4: Create combined summary (depends on analysis jobs)
 echo ""
 echo "=== Step 4: Creating Combined Summary ===" 
+SUMMARY_LOG="${LOG_DIR}/summary_job.log"
 SUMMARY_JOB_ID=$(sbatch --parsable \
     --dependency=afterok:${JOB_ID} \
     --cpus-per-task=1 \
     --mem-per-cpu=2gb \
     --time=10:00 \
     --job-name=tree-analysis-summary-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="${LOG_DIR}/summary_%A_%a.out" \
-    --error="${LOG_DIR}/summary_%A_%a.err" \
+    --output="${SUMMARY_LOG}" \
+    --error="${SUMMARY_LOG}" \
     --account=hoehnlab-share \
     --wrap="
     echo \"=== Summary job started at \$(date) ===\" 
@@ -234,7 +238,7 @@ SUMMARY_JOB_ID=$(sbatch --parsable \
     python3 scripts/analysis/create_combined_summary.py \"$TREE_ANALYSIS_DIR\"
     echo \"=== Summary job completed at \$(date) ===\" 
     ")
-echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID (logs to main file)"
+echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID"
 
 # =============================================================================
 # Step 5: Submit Tree Plotting Jobs
@@ -244,7 +248,7 @@ TREE_PLOTS_LOG_DIR="${LOG_DIR}/tree_plotting_jobs"
 mkdir -p "$TREE_PLOTS_LOG_DIR"
 
 PLOT_JOB_ID=$(sbatch --parsable \
-    --dependency=afterok:${JOB_ID} \
+    --dependency=afterok:${SUMMARY_JOB_ID} \
     --array=1-${TOTAL_JOBS}%5 \
     --cpus-per-task=2 \
     --mem-per-cpu=8gb \
@@ -254,7 +258,7 @@ PLOT_JOB_ID=$(sbatch --parsable \
     --error="${TREE_PLOTS_LOG_DIR}/tree_plots_%A_%a.err" \
     --account=hoehnlab-share \
     --wrap="
-        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID started: \$(date)\" >> \"$LOG_FILE\"
+        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID started: \$(date)\"
         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
@@ -264,48 +268,15 @@ PLOT_JOB_ID=$(sbatch --parsable \
             \"$TREE_ANALYSIS_DIR\" \
             \"$ANALYSIS_TYPE\"
         
-        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID completed: \$(date)\" >> \"$LOG_FILE\"
+        echo \"Tree plotting job \$SLURM_ARRAY_TASK_ID completed: \$(date)\"
     ")
 
 echo "Tree plotting jobs submitted with ID: $PLOT_JOB_ID"
 echo "Individual job logs in: $TREE_PLOTS_LOG_DIR"
-
-# =============================================================================
-# Step 6: Create Differentiation Timing Plots
-DIFF_TIMING_LOG_DIR="${LOG_DIR}/differentiation_timing_jobs"
-mkdir -p "$DIFF_TIMING_LOG_DIR"
-
-DIFF_TIMING_JOB_ID=$(sbatch --parsable \
-    --array=1-${TOTAL_JOBS}%5 \
-    --cpus-per-task=2 \
-    --mem-per-cpu=4gb \
-    --time=30:00 \
-    --job-name=diff-timing-${ANALYSIS_TYPE}-${REV_SUFFIX} \
-    --output="${DIFF_TIMING_LOG_DIR}/diff_timing_%A_%a.out" \
-    --error="${DIFF_TIMING_LOG_DIR}/diff_timing_%A_%a.err" \
-    --account=hoehnlab-share \
-    --wrap="
-        echo \"Differentiation timing job \$SLURM_ARRAY_TASK_ID started: \$(date)\" >> \"$LOG_FILE\"
-        source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-        conda activate r_phylo
-        cd \"$PROJECT_ROOT\"
-        
-        Rscript scripts/plotting/plot_differentiation_timing.R \
-            \"$JOB_LIST_FILE\" \
-            \"\$SLURM_ARRAY_TASK_ID\" \
-            \"$TREE_ANALYSIS_DIR\"
-        
-        echo \"Differentiation timing job \$SLURM_ARRAY_TASK_ID completed: \$(date)\" >> \"$LOG_FILE\"
-    ")
-
-echo "Differentiation timing jobs submitted with ID: $DIFF_TIMING_JOB_ID"
-echo "Job logs in: $DIFF_TIMING_LOG_DIR"
 
 echo ""
 echo "=== Tree Analysis Pipeline Completed: $(date) ==="
 echo "Main log file: $LOG_FILE"
 echo "Analysis job logs: $ANALYSIS_LOG_DIR/"
 echo "Tree plotting logs: $TREE_PLOTS_LOG_DIR/"
-echo ""
 echo "Results directory: $TREE_ANALYSIS_DIR"
-echo "Check publication plots in: $TREE_ANALYSIS_DIR/plots/publication"

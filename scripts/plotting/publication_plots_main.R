@@ -252,7 +252,7 @@ if (nrow(all_combined_data) > 0) {
       ))
     ) %>%
     filter(config %in% selected_configs)  # Apply config filter
-  
+
   cat("After filtering:", nrow(summary_data), "data rows for plotting\n")
 }
 
@@ -366,7 +366,8 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
       reference_value = 0,
       facet_col = facet_column,
       nrow = 2,
-      ncol = 4
+      ncol = 4,
+      facet_scales = "fixed"
     ) +
       theme(
         strip.background = element_blank(),
