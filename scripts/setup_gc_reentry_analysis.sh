@@ -1,16 +1,18 @@
 #!/bin/bash
 # setup_gc_reentry.sh
+CONFIG_NAME="${1:-config_ratio_1to1_sel}"
+DIR_SUFFIX="${2:-8_28}"
 
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
 HUNTER_SIMULATION_NAME="gc_reentry_hunter"
 REV_SUFFIX="irrev"
 ANALYSIS_TYPE="main_analysis"
-config_name="config_ratio_1to1_sel"
+config_name="$CONFIG_NAME"
 
 # Hunter's source directories
-HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/simble_sims_gc_reentry_8_28/"
-HUNTER_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/beast_results_8_28/"
-HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_8_28_sherry/"
+HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/simble_sims_gc_reentry_${DIR_SUFFIX}/"
+HUNTER_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/beast_results_${DIR_SUFFIX}/"
+HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}_sherry/"
 
 # Setup Hunter's directory structure
 HUNTER_BASE_DATA_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/data"
@@ -36,6 +38,8 @@ mkdir -p "$HUNTER_DOWSER_DIR"
 if [[ -d "$HUNTER_DOWSER_SOURCE" ]]; then
     rsync -av "$HUNTER_DOWSER_SOURCE" "$HUNTER_DOWSER_DIR/"
     echo "✓ Dowser trees copied to: $HUNTER_DOWSER_DIR"
+else
+    echo "⚠ Dowser source not found (may still be running): $HUNTER_DOWSER_SOURCE"
 fi
 
 # 3. Setup BEAST results with model type inference

@@ -48,9 +48,9 @@ normalize_tip <- function(x) {
   x <- as.character(x)
   tmp <- tolower(stringr::str_replace_all(x, "[ _]", ""))
   case_when(
-    tmp %in% c("memorybcell", "memory_b_cell") ~ "Memory B Cell",
-    tmp %in% c("plasmacell", "plasma_cell") ~ "Plasma Cell",
-    tmp %in% c("gcbcell", "gc", "default", "gc_b_cell") ~ "Germinal Center",
+    tmp %in% c("memorybcell", "memory_b_cell") ~ "MBC",
+    tmp %in% c("plasmacell", "plasma_cell") ~ "PC",
+    tmp %in% c("gcbcell", "gc", "default", "gc_b_cell") ~ "GC",
     TRUE ~ x
   )
 }
@@ -121,7 +121,7 @@ load_true_timing <- function(true_tree_file) {
                  # Convert time_of_differentiation to numeric
                  rel_differentiation_time = as.numeric(time_of_differentiation) / tree_height,
                  panel = "True") %>%
-          filter(tip_type %in% c("Memory B Cell", "Plasma Cell")) %>%
+          filter(tip_type %in% c("MBC", "PC")) %>%
           select(clone_id, tip_type, rel_differentiation_time, panel)
 
         true_data <- rbind(true_data, clone_data)
@@ -192,7 +192,7 @@ create_differentiation_timing_plots <- function() {
       differentiation_time = - height,
       rel_differentiation_time = - relative_height + 1
     ) %>%
-    filter(tip_type %in% c("Memory B Cell", "Plasma Cell"))
+    filter(tip_type %in% c("MBC", "PC"))
 
   cat("Processed", length(unique(estimated_diffs$clone_id)), "clones successfully\n")
 
@@ -200,7 +200,7 @@ create_differentiation_timing_plots <- function() {
   true_data <- load_true_timing(true_tree_file)
 
   # Create plots
-  colors <- c("Memory B Cell" = "#E69F00", "Plasma Cell" = "#0173B2")
+  colors <- c("MBC" = "#E69F00", "PC" = "#0173B2")
 
   # Plot 1: Estimated relative timing
   p1 <- ggplot(estimated_diffs, aes(x = rel_differentiation_time, y = tip_type)) +
@@ -244,7 +244,7 @@ create_differentiation_timing_plots <- function() {
     ) %>%
       mutate(
         panel = factor(panel, levels = c("True", "Estimated")),
-        tip_type = factor(tip_type, levels = c("Memory B Cell", "Plasma Cell"))
+        tip_type = factor(tip_type, levels = c("PC", "MBC"))
       )
 
     p3 <- ggplot(combined_data, aes(x = rel_differentiation_time, y = tip_type)) +
@@ -267,7 +267,7 @@ create_differentiation_timing_plots <- function() {
 
     # Save compact version
     compact_file <- file.path(pub_plots_dir, paste0("compact_differentiation_timing.pdf"))
-    save_compact_plot(p3, compact_file, width = 3.4, height = 1.7)
+    save_compact_plot(p3, compact_file, width = 2.5, height = 1.7)
 
   }
 

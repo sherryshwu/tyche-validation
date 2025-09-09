@@ -81,7 +81,7 @@ conv_exclusions_by_config <- data.frame(config = character(), clone_id = charact
 
 if (!skip_convergence_filtering) {
   cat("Loading convergence data...\n")
-  
+
   # Build convergence file paths based on simulation names
   for (sim_name in simulation_names) {
     for (rev_suffix in rev_suffixes) {
@@ -168,7 +168,7 @@ if (nrow(all_combined_data) > 0) {
     mutate(clone_id = as.character(clone_id))
 
   filtered_data <- filtered_data_initial %>%
-    anti_join(conv_exclusions_by_config, 
+    anti_join(conv_exclusions_by_config,
               by = c("config", "clone_id", "simulation_name", "rev_suffix"))
 
   dropped_n <- nrow(filtered_data_initial) - nrow(filtered_data)
@@ -241,13 +241,13 @@ if (nrow(all_combined_data) > 0) {
       )),
 
       facet_label_detailed = factor(facet_label_detailed, levels = c(
-        "Selective Evolution\n1:1 GC:Other", 
+        "Selective Evolution\n1:1 GC:Other",
         "Uniform Neutral Evolution\n1:1 GC:Other",
-        "Selective Evolution\n1:3 GC:Other", 
+        "Selective Evolution\n1:3 GC:Other",
         "Uniform Neutral Evolution\n1:3 GC:Other",
-        "Selective Evolution (GC re-entry)\n1:1 GC:Other", 
+        "Selective Evolution (GC re-entry)\n1:1 GC:Other",
         "Uniform Neutral Evolution (GC re-entry)\n1:1 GC:Other",
-        "Selective Evolution (GC re-entry)\n1:3 GC:Other", 
+        "Selective Evolution (GC re-entry)\n1:3 GC:Other",
         "Uniform Neutral Evolution (GC re-entry)\n1:3 GC:Other"
       ))
     ) %>%
@@ -293,7 +293,7 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
 
   if (length(summary_data$rf_distance) > 0) {
     plots$rf_distance <- save_metric_plot(
-      metric_col = "rf_distance", 
+      metric_col = "rf_distance",
       y_label = "RF Distance",
       show_x_labels = FALSE,
       add_reference_line = TRUE,
@@ -367,7 +367,7 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
       facet_col = facet_column,
       nrow = 2,
       ncol = 4,
-      facet_scales = "fixed"
+      facet_scales = "free_y"
     ) +
       theme(
         strip.background = element_blank(),

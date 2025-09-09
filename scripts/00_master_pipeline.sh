@@ -27,6 +27,8 @@ bash scripts/03_tree_analysis.sh "$SIMULATION_NAME" rev main_analysis
 # Step 3-2: Tree analysis for GC re-entry simulation
 echo ""
 echo "=== Step 3-2: Tree Analysis (gc_reentry_hunter) ==="
+bash scripts/setup_gc_reentry_analysis.sh config_ratio_1to1_sel 8_28
+bash scripts/setup_gc_reentry_analysis.sh config_ratio_1to1_neu uniform_neutral_8_29
 bash scripts/03_tree_analysis.sh gc_reentry_hunter irrev main_analysis
 
 # Step 3-3: Tree analysis for differentiation_analysis
