@@ -200,7 +200,7 @@ create_differentiation_timing_plots <- function() {
   true_data <- load_true_timing(true_tree_file)
 
   # Create plots
-  colors <- c("MBC" = "#E69F00", "PC" = "#0173B2")
+  colors <- c("MBC" = "#0173B2", "PC" = "#E69F00")
 
   # Plot 1: Estimated relative timing
   p1 <- ggplot(estimated_diffs, aes(x = rel_differentiation_time, y = tip_type)) +
@@ -248,7 +248,7 @@ create_differentiation_timing_plots <- function() {
       )
 
     p3 <- ggplot(combined_data, aes(x = rel_differentiation_time, y = tip_type)) +
-      geom_boxplot(aes(fill = tip_type), alpha = 0.7, outlier.shape = NA) +
+      geom_boxplot(aes(fill = tip_type), outlier.shape = NA) +
       geom_jitter(aes(color = tip_type), width = 0, height = 0.1, size = 0.3) +
       facet_grid(rows = vars(panel)) +
       scale_fill_manual(values = colors) +
