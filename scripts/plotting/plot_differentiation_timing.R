@@ -249,7 +249,7 @@ create_differentiation_timing_plots <- function() {
 
     p3 <- ggplot(combined_data, aes(x = rel_differentiation_time, y = tip_type)) +
       geom_boxplot(aes(fill = tip_type), outlier.shape = NA) +
-      geom_jitter(aes(color = tip_type), width = 0, height = 0.1, size = 0.3) +
+      geom_jitter(width = 0, height = 0.1, size = 0.025) +
       facet_grid(rows = vars(panel)) +
       scale_fill_manual(values = colors) +
       scale_color_manual(values = colors) +

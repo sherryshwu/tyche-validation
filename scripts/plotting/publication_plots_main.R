@@ -220,10 +220,10 @@ if (nrow(all_combined_data) > 0) {
       # Create detailed labels with config info (for supp_tree_length)
       facet_label_detailed = if (plot_type == "supp_tree_length") {
         case_when(
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_sel" ~ "Selective Evolution (GC re-entry)\n1:1 GC:Other",
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral Evolution (GC re-entry)\n1:1 GC:Other",
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_sel" ~ "Selective Evolution (GC re-entry)\n1:3 GC:Other",
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_neu" ~ "Uniform Neutral Evolution (GC re-entry)\n1:3 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_sel" ~ "Selective (GC re-entry)\n1:1 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_sel" ~ "Selective (GC re-entry)\n1:3 GC:Other",
+          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_neu" ~ "Uniform Neutral (GC re-entry)\n1:3 GC:Other",
           simulation_name == "tltt_08_20" & config == "config_ratio_1to1_sel" ~ "Selective Evolution\n1:1 GC:Other",
           simulation_name == "tltt_08_20" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral Evolution\n1:1 GC:Other",
           simulation_name == "tltt_08_20" & config == "config_ratio_1to3_sel" ~ "Selective Evolution\n1:3 GC:Other",
@@ -243,12 +243,12 @@ if (nrow(all_combined_data) > 0) {
       facet_label_detailed = factor(facet_label_detailed, levels = c(
         "Selective Evolution\n1:1 GC:Other",
         "Uniform Neutral Evolution\n1:1 GC:Other",
+        "Selective (GC re-entry)\n1:1 GC:Other",
+        "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
         "Selective Evolution\n1:3 GC:Other",
         "Uniform Neutral Evolution\n1:3 GC:Other",
-        "Selective Evolution (GC re-entry)\n1:1 GC:Other",
-        "Uniform Neutral Evolution (GC re-entry)\n1:1 GC:Other",
-        "Selective Evolution (GC re-entry)\n1:3 GC:Other",
-        "Uniform Neutral Evolution (GC re-entry)\n1:3 GC:Other"
+        "Selective (GC re-entry)\n1:3 GC:Other",
+        "Uniform Neutral (GC re-entry)\n1:3 GC:Other"
       ))
     ) %>%
     filter(config %in% selected_configs)  # Apply config filter
