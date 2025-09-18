@@ -41,6 +41,23 @@ extract_template_and_clone <- function(filename) {
   return(list(template_name = "Unknown", clone_id = "1"))
 }
 
+# Helper function to read ESS from BEAST log file
+read_ess_from_log <- function(beast_tree_file) {
+  # Construct log file path
+  log_tsv_file <- gsub("_tree_with_trait\\.tree$", "_log.tsv", beast_tree_file)
+
+  if (!file.exists(log_tsv_file)) {
+    cat("  Warning: Log file not found:", basename(log_tsv_file), "\n")
+    return(NA)
+  }
+  # Read TSV file
+  lines <- readLines(log_tsv_file, warn = FALSE)
+  tree_height_line <- grep("^TreeHeight\\s+", lines, value = TRUE)
+  tree_height_ess <- as.numeric(unlist(strsplit(tree_height_line[1], "\\s+"))[9])
+
+  return(tree_height_ess)
+}
+
 # Create standardized directory structure
 create_plot_directories <- function(base_dir, plot_types) {
   dirs <- list()

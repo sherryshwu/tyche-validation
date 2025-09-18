@@ -10,11 +10,12 @@ echo "Analysis type: $ANALYSIS_TYPE"
 
 # Setup combined output directory
 COMBINED_PLOTS_DIR="${BASE_PROJECT_ROOT}/figures/${ANALYSIS_TYPE}"
-mkdir -p "$COMBINED_PLOTS_DIR"
+LOGS_DIR="${BASE_PROJECT_ROOT}/logs/publication_plots"
+mkdir -p "$COMBINED_PLOTS_DIR" "$LOGS_DIR"
 
 # Setup logging
-LOG_FILE="${COMBINED_PLOTS_DIR}/publication_plots_$(date +%Y%m%d_%H%M%S).log"
-exec > >(tee -a "$LOG_FILE")
+MAIN_LOG_FILE="${LOGS_DIR}/publication_plots_main_$(date +%Y%m%d_%H%M%S).log"
+exec > >(tee -a "$MAIN_LOG_FILE")
 exec 2>&1
 
 # Common settings
@@ -48,13 +49,18 @@ case "$ANALYSIS_TYPE" in
 
         echo "Summary files for main: $SUMMARY_FILES_BOTH"
 
+        # Create separate log files for each step
+        STEP1_LOG="${LOGS_DIR}/step1_main_plots_$(date +%Y%m%d_%H%M%S).log"
+        STEP2_LOG="${LOGS_DIR}/step2_supp1_plots_$(date +%Y%m%d_%H%M%S).log"
+        STEP3_LOG="${LOGS_DIR}/step3_supp2_plots_$(date +%Y%m%d_%H%M%S).log"
+
         MAIN_JOB_ID=$(sbatch --parsable \
             --cpus-per-task=2 \
             --mem-per-cpu=6gb \
             --time=45:00 \
             --job-name=main-publication-plots \
-            --output="${LOG_FILE}" \
-            --error="${LOG_FILE}" \
+            --output="${STEP1_LOG}" \
+            --error="${STEP1_LOG}" \
             --account=hoehnlab-share \
             --wrap="
             echo \"Main publication plots started: \$(date)\"
@@ -91,8 +97,8 @@ case "$ANALYSIS_TYPE" in
             --mem-per-cpu=6gb \
             --time=30:00 \
             --job-name=supp1-figure \
-            --output="${LOG_FILE}" \
-            --error="${LOG_FILE}" \
+            --output="${STEP2_LOG}" \
+            --error="${STEP2_LOG}" \
             --account=hoehnlab-share \
             --wrap="
             echo \"Supplementary figure 1 started: \$(date)\"
@@ -129,8 +135,8 @@ case "$ANALYSIS_TYPE" in
             --mem-per-cpu=6gb \
             --time=30:00 \
             --job-name=supp2-figure \
-            --output="${LOG_FILE}" \
-            --error="${LOG_FILE}" \
+            --output="${STEP3_LOG}" \
+            --error="${STEP3_LOG}" \
             --account=hoehnlab-share \
             --wrap="
             echo \"Supplementary figure 2 started: \$(date)\"
@@ -156,6 +162,13 @@ case "$ANALYSIS_TYPE" in
         echo "Supplementary figure 1 job: $SUPP1_JOB_ID" 
         echo "Supplementary figure 2 job: $SUPP2_JOB_ID"
         echo "Output directory: $COMBINED_PLOTS_DIR"
+
+        echo ""
+        echo "=== Summary of Log Files ==="
+        echo "Main script log: $MAIN_LOG_FILE"
+        echo "Step 1 (main plots): $STEP1_LOG"
+        echo "Step 2 (supp figure 1): $STEP2_LOG"
+        echo "Step 3 (supp figure 2): $STEP3_LOG"
 
         echo ""
         echo "=== Summary of Figures Being Created ==="

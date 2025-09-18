@@ -75,6 +75,58 @@ if (nrow(all_combined_data) == 0) {
 
 cat("Total combined data rows:", nrow(all_combined_data), "\n")
 
+find_unconverged_clones_by_ess <- function(base_dir, config_name, selected_models, ess_threshold = 100) {
+  all_exclusions <- data.frame(
+    config = character(),
+    clone_id = character(),
+    model_short = character(),
+    stringsAsFactors = FALSE
+  )
+
+  # Find all tree files in the directory
+  tree_files <- list.files(base_dir, pattern = "_tree_with_trait\\.tree$", recursive = TRUE, full.names = TRUE)
+
+  if (length(tree_files) == 0) {
+    cat("No tree files found in", base_dir, "\n")
+    return(all_exclusions)
+  }
+
+  cat("Found", length(tree_files), "tree files in", basename(base_dir), "\n")
+
+  for (tree_file in tree_files) {
+    filename <- basename(tree_file)
+
+    # Extract model name from filename
+    file_name_parts <- unlist(strsplit(filename, "_"))
+    full_model_name <- paste(file_name_parts[1], file_name_parts[2], sep = "_")
+    model_short <- get_model_short_name(full_model_name)
+
+    # Process the tree if model is selected
+    if (model_short %in% selected_models) {
+      # Extract clone ID
+      clone_id <- file_name_parts[which(file_name_parts == "tree") - 1]
+
+      # Read ESS value
+      ess_value <- read_ess_from_log(tree_file)
+
+      if (!is.na(ess_value)) {
+        if (ess_value <= ess_threshold) {
+          # Add to exclusions
+          exclusion <- data.frame(
+            config = config_name,
+            clone_id = clone_id,
+            model_short = model_short,
+            stringsAsFactors = FALSE
+          )
+          all_exclusions <- rbind(all_exclusions, exclusion)
+          cat("Clone", clone_id, "for model", model_short, "ESS:", ess_value, "(unconverged)\n")
+        }
+      }
+    }
+  }
+  return(all_exclusions)
+}
+
 # -------------------------- Load convergence data --------------------------
 conv_exclusions_by_config <- data.frame(config = character(), clone_id = character(), 
                                         simulation_name = character(), rev_suffix = character())
@@ -85,51 +137,90 @@ if (!skip_convergence_filtering) {
   # Build convergence file paths based on simulation names
   for (sim_name in simulation_names) {
     for (rev_suffix in rev_suffixes) {
-      base_dir <- file.path(project_root, sim_name, "results", analysis_type, rev_suffix)      
+      base_dir <- file.path(project_root, sim_name, "results", analysis_type, rev_suffix)
       convergence_files <- c(
         file.path(base_dir, "tyche_models", "summary", "tyche_models_convergence_summary.csv"),
         file.path(base_dir, "competing_models", "summary", "competing_models_convergence_summary.csv")
       )
 
-      for (conv_file in convergence_files) {
-        if (file.exists(conv_file)) {
-          temp_conv <- read_csv(conv_file, show_col_types = FALSE)
-          temp_conv$unconverged_clone_ids <- as.character(temp_conv$unconverged_clone_ids)
+      # Check if convergence summary files exist
+      csv_files_exist <- file.exists(convergence_files)
 
-          # Add tracking columns
-          temp_conv$simulation_name <- sim_name
-          temp_conv$rev_suffix <- rev_suffix
+      if (any(csv_files_exist)) {
+        cat("Using CSV convergence files for", sim_name, rev_suffix, "\n")
 
-          # Process exclusions for this specific combination
-          filtered_convergence_data <- temp_conv %>%
-            mutate(model_short = get_model_short_name(template_id)) %>%
-            filter(model_short %in% selected_models) %>%
-            filter(config_name %in% selected_configs)
+        for (conv_file in convergence_files) {
+          if (file.exists(conv_file)) {
+            temp_conv <- read_csv(conv_file, show_col_types = FALSE)
+            temp_conv$unconverged_clone_ids <- as.character(temp_conv$unconverged_clone_ids)
 
-          if (nrow(filtered_convergence_data) > 0) {
-            parse_clone_ids <- function(x) {
-              if (is.na(x) || x == "") return(character(0))
-              x <- gsub("[^0-9]", " ", x)
-              parts <- unlist(strsplit(x, "\\s+"))
-              parts <- parts[nzchar(parts)]
-              unique(as.character(as.integer(parts)))
+            # Add tracking columns
+            temp_conv$simulation_name <- sim_name
+            temp_conv$rev_suffix <- rev_suffix
+
+            # Process exclusions for this specific combination
+            filtered_convergence_data <- temp_conv %>%
+              mutate(model_short = get_model_short_name(template_id)) %>%
+              filter(model_short %in% selected_models) %>%
+              filter(config_name %in% selected_configs)
+
+            if (nrow(filtered_convergence_data) > 0) {
+              parse_clone_ids <- function(x) {
+                if (is.na(x) || x == "") return(character(0))
+                x <- gsub("[^0-9]", " ", x)
+                parts <- unlist(strsplit(x, "\\s+"))
+                parts <- parts[nzchar(parts)]
+                unique(as.character(as.integer(parts)))
+              }
+
+              for (j in seq_len(nrow(filtered_convergence_data))) {
+                ids <- parse_clone_ids(filtered_convergence_data$unconverged_clone_ids[j])
+                if (length(ids) > 0) {
+                  temp_exclusions <- data.frame(
+                    config = filtered_convergence_data$config_name[j],
+                    clone_id = ids,
+                    simulation_name = sim_name,
+                    rev_suffix = rev_suffix,
+                    stringsAsFactors = FALSE
+                  )
+                  conv_exclusions_by_config <- rbind(conv_exclusions_by_config, temp_exclusions)
+                }
+              }
             }
+            cat("Processed convergence data from:", basename(conv_file), "\n")
+          }
+        }
+      } else {
+        cat("CSV convergence files missing for", sim_name, rev_suffix, "- using ESS method\n")
 
-            for (j in seq_len(nrow(filtered_convergence_data))) {
-              ids <- parse_clone_ids(filtered_convergence_data$unconverged_clone_ids[j])
-              if (length(ids) > 0) {
-                temp_exclusions <- data.frame(
-                  config = filtered_convergence_data$config_name[j], 
-                  clone_id = ids,
-                  simulation_name = sim_name,
-                  rev_suffix = rev_suffix,
-                  stringsAsFactors = FALSE
-                )
-                conv_exclusions_by_config <- rbind(conv_exclusions_by_config, temp_exclusions)
+        # Use ESS method to find unconverged clones
+        for (config_name in selected_configs) {
+          for (model_short in selected_models) {
+            # Look in both tyche_models and competing_models directories
+            search_dirs <- c(
+              file.path(base_dir, "tyche_models"),
+              file.path(base_dir, "competing_models")
+            )
+
+            for (search_dir in search_dirs) {
+              if (dir.exists(search_dir)) {
+                exclusions_from_ess <- find_unconverged_clones_by_ess(search_dir, config_name, selected_models)
+
+                if (nrow(exclusions_from_ess) > 0) {
+                  # Add simulation_name and rev_suffix columns
+                  exclusions_from_ess$simulation_name <- sim_name
+                  exclusions_from_ess$rev_suffix <- rev_suffix
+
+                  # Reorder columns to match the expected structure
+                  exclusions_from_ess <- exclusions_from_ess[, c("config", "clone_id", "simulation_name", "rev_suffix")]
+
+                  conv_exclusions_by_config <- rbind(conv_exclusions_by_config, exclusions_from_ess)
+                  cat("Found", nrow(exclusions_from_ess), "unconverged clones for", config_name, "using ESS method\n")
+
+                }
               }
             }
           }
-          cat("Processed convergence data from:", basename(conv_file), "\n")
         }
       }
     }
