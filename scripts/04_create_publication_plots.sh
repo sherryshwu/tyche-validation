@@ -20,7 +20,7 @@ exec 2>&1
 
 # Common settings
 selected_models="EO_Fixed,EO_Est,IS_Est,SC_AR,UCLD_AR"
-selected_rev_suffixes="irrev"
+selected_rev_suffixes="irrev,rev"
 
 case "$ANALYSIS_TYPE" in
     "main_analysis")
@@ -36,8 +36,13 @@ case "$ANALYSIS_TYPE" in
 
         # Build summary file paths for both simulations
         SUMMARY_FILES_BOTH=""
+        declare -A sim_rev_map
+        sim_rev_map[tltt_08_20]="irrev"
+        sim_rev_map[gc_reentry_hunter]="rev"
+
         for sim in tltt_08_20 gc_reentry_hunter; do
-            summary_file="${BASE_PROJECT_ROOT}/${sim}/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
+            rev_suffix=${sim_rev_map[$sim]}
+            summary_file="${BASE_PROJECT_ROOT}/${sim}/results/${ANALYSIS_TYPE}/${rev_suffix}/tree_analysis/all_results_summary.csv"
             if [[ -f "$summary_file" ]]; then
                 if [[ -n "$SUMMARY_FILES_BOTH" ]]; then
                     SUMMARY_FILES_BOTH="${SUMMARY_FILES_BOTH},${summary_file}"
@@ -259,5 +264,5 @@ esac
 
 echo ""
 echo "=== Publication Plots Pipeline Submitted ==="
-echo "Log file: $LOG_FILE"
+echo "Log file: $MAIN_LOG_FILE"
 echo "=== Done ==="

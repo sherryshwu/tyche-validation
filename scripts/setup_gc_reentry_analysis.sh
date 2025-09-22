@@ -5,20 +5,21 @@ DIR_SUFFIX="${2:-8_28}"
 
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
 HUNTER_SIMULATION_NAME="gc_reentry_hunter"
-REV_SUFFIX="irrev"
+REV_SUFFIX="rev"
 ANALYSIS_TYPE="main_analysis"
 config_name="$CONFIG_NAME"
 
 # Hunter's source directories
 HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/simble_sims_gc_reentry_${DIR_SUFFIX}/"
 HUNTER_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/beast_results_${DIR_SUFFIX}/"
-HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}_sherry/"
+HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}/"
 
 # Setup Hunter's directory structure
 HUNTER_BASE_DATA_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/data"
 HUNTER_RAW_DATA_DIR="${HUNTER_BASE_DATA_DIR}/raw/${config_name}"
 HUNTER_PROCESSED_DATA_DIR="${HUNTER_BASE_DATA_DIR}/processed"
 HUNTER_RESULTS_BASE_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/results/${ANALYSIS_TYPE}/${REV_SUFFIX}"
+HUNTER_DOWSER_DIR="${HUNTER_PROCESSED_DATA_DIR}/${ANALYSIS_TYPE}/dowser_processed_trees/${REV_SUFFIX}/${config_name}"
 
 echo "=== Setting up Hunter's GC Reentry Analysis ==="
 echo "Hunter simulation: $HUNTER_SIMULATION_NAME"
@@ -33,7 +34,6 @@ fi
 
 # 2. Setup dowser trees
 echo "Setting up dowser trees..."
-HUNTER_DOWSER_DIR="${HUNTER_PROCESSED_DATA_DIR}/${ANALYSIS_TYPE}/dowser_processed_trees/${REV_SUFFIX}"
 mkdir -p "$HUNTER_DOWSER_DIR"
 if [[ -d "$HUNTER_DOWSER_SOURCE" ]]; then
     rsync -av "$HUNTER_DOWSER_SOURCE" "$HUNTER_DOWSER_DIR/"
