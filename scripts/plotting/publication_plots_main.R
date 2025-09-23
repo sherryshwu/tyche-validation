@@ -32,12 +32,12 @@ output_dir <- args[8]
 skip_convergence_filtering <- length(args) >= 9 && args[9] == "skip_convergence"
 
 cat("=== Creating", toupper(plot_type), "Publication Plots ===\n")
-cat("Summary files:", paste(summary_files, collapse=", "), "\n")
-cat("Simulations:", paste(simulation_names, collapse=", "), "\n")
+cat("Summary files:", paste(summary_files, collapse = ", "), "\n")
+cat("Simulations:", paste(simulation_names, collapse = ", "), "\n")
 cat("Plot type:", plot_type, "\n")
-cat("Rev suffixes:", paste(rev_suffixes, collapse=", "), "\n")
-cat("Models:", paste(selected_models, collapse=", "), "\n")
-cat("Configs:", paste(selected_configs, collapse=", "), "\n")
+cat("Rev suffixes:", paste(rev_suffixes, collapse = ", "), "\n")
+cat("Models:", paste(selected_models, collapse = ", "), "\n")
+cat("Configs:", paste(selected_configs, collapse = ", "), "\n")
 cat("Output directory:", output_dir, "\n")
 
 if (skip_convergence_filtering) {
@@ -49,9 +49,11 @@ project_root <- "/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
 plots_dir <- file.path(output_dir, "plots")
 pub_plots_dir <- file.path(plots_dir, "main_figures")
 supp_plots_dir <- file.path(plots_dir, "supplementary_figures")
+plot_data_dir <- file.path(output_dir, "plot_data")
 dir.create(plots_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(pub_plots_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(supp_plots_dir, showWarnings = FALSE)
+dir.create(plot_data_dir, recursive = TRUE, showWarnings = FALSE)
 
 # -------------------------- Load all data --------------------------
 cat("Loading data from summary files...\n")
@@ -302,7 +304,7 @@ if (nrow(all_combined_data) > 0) {
       facet_label = factor(facet_label, levels = c(
         "Selective Evolution\n1:3 GC:Other",
         "Uniform Neutral Evolution\n1:3 GC:Other",
-        "Selective Evolution\n1:1 GC:Other", 
+        "Selective Evolution\n1:1 GC:Other",
         "Uniform Neutral Evolution\n1:1 GC:Other"
       )),
       # Create basic simulation-specific labels (for main and supp_all_metrics)
@@ -345,15 +347,15 @@ if (nrow(all_combined_data) > 0) {
         "Selective Evolution\n1:1 GC:Other",
         "Uniform Neutral Evolution\n1:1 GC:Other",
         "Selective (GC re-entry)\n1:1 GC:Other",
-        "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
         "Selective Evolution\n1:3 GC:Other",
         "Uniform Neutral Evolution\n1:3 GC:Other",
+        "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
         "Selective (GC re-entry)\n1:3 GC:Other",
         "Uniform Neutral (GC re-entry)\n1:3 GC:Other"
       ))
     ) %>%
-    filter(config %in% selected_configs)  # Apply config filter
-
+    filter(config %in% selected_configs)
+  write_csv(summary_data, file.path(plot_data_dir, paste0("summary_data_", plot_type, ".csv")))
   cat("After filtering:", nrow(summary_data), "data rows for plotting\n")
 }
 
@@ -467,7 +469,7 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
       reference_value = 0,
       facet_col = facet_column,
       nrow = 2,
-      ncol = 4,
+      ncol = 3,
       facet_scales = "free_y"
     ) +
       theme(

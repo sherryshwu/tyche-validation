@@ -2,6 +2,7 @@
 suppressMessages(library(dowser))
 suppressMessages(library(airr))
 suppressMessages(library(stringr))
+source("scripts/analysis/tree_functions.R")
 
 # ------------------ Constants and configuration ------------------ #
 # Default parameters for BEAST and dowser analysis
@@ -94,43 +95,6 @@ logKVs <- function(title, kvs) {
   cat(strrep("=", 15), title, strrep("=", 15), "\n", sep = " ")
   for (nm in names(kvs))
   cat(sprintf("%-12s: %s\n", nm, kvs[[nm]]))
-}
-
-# Build vector of parameters to ignore during convergence checking
-build_ignore_vector <- function(template_id, model_type, analysis_scope) {
-  is_fixed   <- grepl("FixedClockRates", template_id)
-  is_relaxed <- grepl("UCRelaxedClock", template_id)
-  is_3state  <- grepl("3state", template_id)
-
-  ignore <- c("traitfrequencies", "freqParameter", "rateIndicator")
-
-  # Analysis-specific ignore parameters
-  if (analysis_scope == "differentiation_analysis" && is_3state) {
-    ignore <- c(ignore, "traitRates", "clockRate", "traitClockRate")
-  }
-
-  if (is_fixed) {
-    ignore <- c(ignore, "typeLinkedRates")
-    if (identical(model_type, "competing_models")) {
-      ignore <- c(ignore, "^geneticClockRate")
-    }
-  }
-  if (is_relaxed) {
-    ignore <- c(ignore, "rateCategories")
-  }
-
-  unique(ignore)
-}
-
-# Ensure neutral evolution fields are present in data
-ensure_neutral_fields <- function(df) {
-  if (!"productive" %in% names(df))                df$productive <- TRUE
-  if (!"v_call" %in% names(df))                    df$v_call <- "IGHV1-1*01"
-  if (!"d_call" %in% names(df))                    df$d_call <- "IGHD1-1*01"
-  if (!"j_call" %in% names(df))                    df$j_call <- "IGHJ1*01"
-  if (!"rev_comp" %in% names(df))                  df$rev_comp <- FALSE
-  if (!"germline_alignment_d_mask" %in% names(df)) df$germline_alignment_d_mask <- df$germline_alignment
-  df
 }
 
 logKVs("Job", c(

@@ -151,6 +151,31 @@ echo "Total jobs created: $TOTAL_JOBS"
 echo "Job list saved to: $JOB_LIST_FILE"
 
 # =============================================================================
+# Step 1.5: Generate convergence summaries if missing
+echo ""
+echo "=== Step 1.5: Checking Convergence Summaries ==="
+
+# Check if convergence summaries exist
+TYCHE_CONV_FILE="$RESULTS_BASE_DIR/tyche_models/summary/tyche_models_convergence_summary.csv"
+COMP_CONV_FILE="$RESULTS_BASE_DIR/competing_models/summary/competing_models_convergence_summary.csv"
+
+if [[ ! -f "$TYCHE_CONV_FILE" ]] || [[ ! -f "$COMP_CONV_FILE" ]]; then
+    echo "Convergence summaries missing - generating them..."
+    
+    Rscript scripts/analysis/generate_convergence_summary.R \
+        "$SIMULATION_NAME" "$REV_SUFFIX" "$ANALYSIS_TYPE"
+    
+    if [[ $? -eq 0 ]]; then
+        echo "✓ Convergence summaries generated successfully"
+    else
+        echo "ERROR: Failed to generate convergence summaries"
+        exit 1
+    fi
+else
+    echo "✓ Convergence summaries already exist"
+fi
+
+# =============================================================================
 # Step 2: Submit Slurm jobs
 echo ""
 echo "=== Step 2: Submitting Analysis Jobs ==="
