@@ -345,13 +345,11 @@ if (nrow(all_combined_data) > 0) {
 
       facet_label_detailed = factor(facet_label_detailed, levels = c(
         "Selective Evolution\n1:1 GC:Other",
-        "Uniform Neutral Evolution\n1:1 GC:Other",
-        "Selective (GC re-entry)\n1:1 GC:Other",
         "Selective Evolution\n1:3 GC:Other",
+        "Selective (GC re-entry)\n1:1 GC:Other",
+        "Uniform Neutral Evolution\n1:1 GC:Other",
         "Uniform Neutral Evolution\n1:3 GC:Other",
-        "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
-        "Selective (GC re-entry)\n1:3 GC:Other",
-        "Uniform Neutral (GC re-entry)\n1:3 GC:Other"
+        "Uniform Neutral (GC re-entry)\n1:1 GC:Other"
       ))
     ) %>%
     filter(config %in% selected_configs)
