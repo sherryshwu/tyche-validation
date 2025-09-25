@@ -10,48 +10,53 @@ We perform simulation-based studies of B cell evolution by:
 
 ## Repository structure
 ```
-scripts/
-├── 00_master_pipeline.sh
-├── 01_simulate_data.sh
-├── 02_submit_beast_phases.sh
-├── 03_tree_analysis_differentiation.sh
-├── 03_tree_analysis_main.sh
-├── 04_create_publication_plots.sh
+scripts
 ├── analysis
-│   ├── create_combined_summary.py
-│   ├── tree_analysis.R
-│   └── tree_functions.R
-├── beast
-│   ├── create_beast_job_combinations.sh
-│   ├── generate_configs.py
+│   ├── calculate_tree_metrics.R
+│   ├── consolidate_tree_metrics.py
+│   └── summarize_convergence.R
+├── phylogenetics
+│   ├── create_phylo_job_grid.sh
+│   ├── generate_simble_configs.py
 │   ├── run_beast_dowser.R
-│   └── run_beast_dowser.sh
-├── plotting
-│   ├── plot_differentiation_timing.R
-│   ├── publication_plots_main.R
-│   └── tree_plotting.R
-└── setup_gc_reentry_analysis.sh
+│   └── submit_beast_dowser.sh
+├── pipeline
+│   ├── 00_run_pipeline.sh
+│   ├── 01_simulate_data.sh
+│   ├── 02_submit_beast_phases.sh
+│   ├── 03_analyze_trees.sh
+│   └── 04_generate_figures.sh
+├── setup
+│   └── import_gc_reentry_data.sh
+├── utils
+│   └── phylo_utilities.R
+└── visualization
+    ├── create_differentiation_figures.R
+    ├── create_main_figures.R
+    └── plot_trees.R
 ```
 
 ## Usage
 ### Complete pipeline
 Running the complete analysis pipeline:
 ```
-bash scripts/00_master_pipeline.sh [simulation_name]
+bash scripts/00_run_pipeline.sh [simulation_name]
 ```
 
 ### Individual steps
 1) Data simulation: `sbatch scripts/01_simulate_data.sh [simulation_name]`
 
-2) Beast running: `bash scripts/02_submit_beast_phases.sh [simulation_name]`
+2) Beast running: `bash scripts/02_submit_beast_phases.sh [simulation_name] [analysis_type] [rev_suffix]`
 
-3) Tree analysis: `bash scripts/03_tree_analysis_main.sh [simulation_name] [rev_suffix]`
+3) Tree analysis: `bash scripts/03_analyze_trees.sh [simulation_name] [analysis_type] [rev_suffix]`
+
+4) Figures generation: `bash scripts/04_generate_figures.sh [analysis_type]`
 
 ## Analysis Types
 The pipeline supports the following analysis types:
 - main_analysis: core phylogenetic analysis across all evolutionary configurations
+- differentiation_analysis: applying advanced three-state phylogenetic model to reconstruct the timing of cell differentiation
 - sub_analysis*: subgroup analysis performed on various sampled timepoints to investigate the phenomenon of time-dependent rate decay
-- differentiation_analysis*: applying advanced three-state phylogenetic model to reconstruct the timing of cell differentiation
 
 ## File Organization
 Files are organized in:
@@ -60,14 +65,15 @@ Files are organized in:
 ├── data/                     
 │   ├── raw/
 │   ├── processed/
+├── figures/
+│   ├── main_analysis/
+│   ├── differentiation_analysis/
 ├── results/
 │   ├── main_analysis/
 │   │   ├── irrev/
 │   │   └── rev/
 │   ├── differentiation_analysis/  
-│   │   ├── irrev/
-│   ├── sub_analysis/
-│   │   ├── irrev/                 
+│   │   └── irrev/             
 ├── logs/
 └── configs/
 ```

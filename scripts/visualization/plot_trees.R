@@ -15,7 +15,7 @@ suppressMessages({
 # -------------------------- Command line Argument parsing --------------------------
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 4) {
-  cat("Usage: Rscript tree_plotting.R job_list_csv array_task_id tree_analysis_dir analysis_type\n")
+  cat("Usage: Rscript plot_trees.R job_list_csv array_task_id tree_analysis_dir analysis_type\n")
   quit(status = 1)
 }
 

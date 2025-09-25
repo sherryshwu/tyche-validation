@@ -15,7 +15,7 @@ source("scripts/utils/phylo_utilities.R")
 # -------------------------- Command line Argument parsing --------------------------
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 3) {
-  cat("Usage: Rscript plot_differentiation_timing.R job_list_csv array_task_id tree_analysis_dir pub_plots_dir\n")
+  cat("Usage: Rscript create_differentiation_figures.R job_list_csv array_task_id tree_analysis_dir pub_plots_dir\n")
   quit(status = 1)
 }
 

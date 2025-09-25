@@ -1,8 +1,8 @@
 #!/bin/bash
 # Get parameters
 SIMULATION_NAME="${1:-tltt_08_20}"
-REV_SUFFIX="${2:-irrev}"
-ANALYSIS_TYPE="${3:-main_analysis}"
+ANALYSIS_TYPE="${2:-main_analysis}"
+REV_SUFFIX="${3:-irrev}"
 
 # Setup paths
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
