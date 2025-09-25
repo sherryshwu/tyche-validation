@@ -14,7 +14,7 @@ LOGS_DIR="${BASE_PROJECT_ROOT}/logs/publication_plots"
 mkdir -p "$COMBINED_PLOTS_DIR" "$LOGS_DIR"
 
 # Setup logging
-MAIN_LOG_FILE="${LOGS_DIR}/publication_plots_main_$(date +%Y%m%d_%H%M%S).log"
+MAIN_LOG_FILE="${LOGS_DIR}/create_main_figures_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$MAIN_LOG_FILE")
 exec 2>&1
 
@@ -73,7 +73,7 @@ case "$ANALYSIS_TYPE" in
             conda activate r_phylo
             cd \"$BASE_PROJECT_ROOT\"
             
-            Rscript scripts/plotting/publication_plots_main.R \
+            Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
                 \"$selected_simulations\" \
                 \"$ANALYSIS_TYPE\" \
@@ -111,7 +111,7 @@ case "$ANALYSIS_TYPE" in
             conda activate r_phylo
             cd \"$BASE_PROJECT_ROOT\"
             
-            Rscript scripts/plotting/publication_plots_main.R \
+            Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
                 \"$selected_simulations_supp\" \
                 \"$ANALYSIS_TYPE\" \
@@ -149,7 +149,7 @@ case "$ANALYSIS_TYPE" in
             conda activate r_phylo
             cd \"$BASE_PROJECT_ROOT\"
             
-            Rscript scripts/plotting/publication_plots_main.R \
+            Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
                 \"$selected_simulations\" \
                 \"$ANALYSIS_TYPE\" \
@@ -228,7 +228,7 @@ case "$ANALYSIS_TYPE" in
                     conda activate r_phylo
                     cd \"$BASE_PROJECT_ROOT\"
                     
-                    Rscript scripts/plotting/plot_differentiation_timing.R \
+                    Rscript scripts/visualization/create_differentiation_figures.R \
                         \"$JOB_LIST_FILE\" \
                         \"\$SLURM_ARRAY_TASK_ID\" \
                         \"${BASE_PROJECT_ROOT}/tltt_08_20/results/differentiation_analysis/irrev/tree_analysis\" \

@@ -21,28 +21,24 @@ bash scripts/02_submit_beast_phases.sh "$SIMULATION_NAME" differentiation_analys
 # Step 3-1: Tree analysis for main_analysis
 echo ""
 echo "=== Step 3-1: Tree Analysis (main_analysis) ==="
-bash scripts/03_tree_analysis.sh "$SIMULATION_NAME" irrev main_analysis
-bash scripts/03_tree_analysis.sh "$SIMULATION_NAME" rev main_analysis
+bash scripts/03_analyze_trees.sh "$SIMULATION_NAME" irrev main_analysis
+bash scripts/03_analyze_trees.sh "$SIMULATION_NAME" rev main_analysis
 
 # Step 3-2: Tree analysis for GC re-entry simulation
 echo ""
 echo "=== Step 3-2: Tree Analysis (gc_reentry_hunter) ==="
-bash scripts/setup_gc_reentry_analysis.sh config_ratio_1to1_sel 8_28
-bash scripts/setup_gc_reentry_analysis.sh config_ratio_1to1_neu uniform_neutral_8_29
-bash scripts/03_tree_analysis.sh gc_reentry_hunter rev main_analysis
+bash scripts/setup/import_gc_reentry_data.sh config_ratio_1to1_sel 8_28
+bash scripts/setup/import_gc_reentry_data.sh config_ratio_1to1_neu uniform_neutral_8_29
+bash scripts/03_analyze_trees.sh gc_reentry_hunter rev main_analysis
 
 # Step 3-3: Tree analysis for differentiation_analysis
 echo ""
 echo "=== Step 3-3: Tree Analysis (differentiation_analysis) ==="
-bash scripts/03_tree_analysis.sh "$SIMULATION_NAME" irrev differentiation_analysis
+bash scripts/03_analyze_trees.sh "$SIMULATION_NAME" irrev differentiation_analysis
 
 # Step 4: Wait for all analyses to complete, then create publication plots
-bash scripts/04_create_publication_plots.sh main_analysis
-bash scripts/04_create_publication_plots.sh differentiation_analysis
-
-# To be finalized...
-echo "=== Step 5: Tree Analysis (sub_analysis) ==="
-bash scripts/03_tree_analysis_sub.sh "$SIMULATION_NAME" irrev
+bash scripts/04_generate_figures.sh main_analysis
+bash scripts/04_generate_figures.sh differentiation_analysis
 
 echo ""
 echo "=== Master Pipeline Completed: $(date) ==="

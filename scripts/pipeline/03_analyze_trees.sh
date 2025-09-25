@@ -162,7 +162,7 @@ COMP_CONV_FILE="$RESULTS_BASE_DIR/competing_models/summary/competing_models_conv
 if [[ ! -f "$TYCHE_CONV_FILE" ]] || [[ ! -f "$COMP_CONV_FILE" ]]; then
     echo "Convergence summaries missing - generating them..."
     
-    Rscript scripts/analysis/generate_convergence_summary.R \
+    Rscript scripts/analysis/summarize_convergence.R \
         "$SIMULATION_NAME" "$REV_SUFFIX" "$ANALYSIS_TYPE"
     
     if [[ $? -eq 0 ]]; then
@@ -211,7 +211,7 @@ JOB_ID=$(sbatch --parsable \
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
         
-        Rscript scripts/analysis/tree_analysis.R \
+        Rscript scripts/analysis/calculate_tree_metrics.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
             \"$TREE_ANALYSIS_DIR\" \
@@ -260,7 +260,7 @@ SUMMARY_JOB_ID=$(sbatch --parsable \
     source /optnfs/common/miniconda3/etc/profile.d/conda.sh
     conda activate r_phylo
     cd \"$PROJECT_ROOT\"
-    python3 scripts/analysis/create_combined_summary.py \"$TREE_ANALYSIS_DIR\"
+    python3 scripts/analysis/consolidate_tree_metrics.py \"$TREE_ANALYSIS_DIR\"
     echo \"=== Summary job completed at \$(date) ===\" 
     ")
 echo "Creating combined summary job submitted with ID: $SUMMARY_JOB_ID"
@@ -287,7 +287,7 @@ PLOT_JOB_ID=$(sbatch --parsable \
         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
-        Rscript scripts/plotting/tree_plotting.R \
+        Rscript scripts/plotting/plot_trees.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
             \"$TREE_ANALYSIS_DIR\" \

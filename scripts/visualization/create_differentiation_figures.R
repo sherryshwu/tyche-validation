@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-# plot_differentiation_timing.R - Create boxplots for cell type differentiation timing
+# Create boxplots for cell type differentiation timing
 
 suppressMessages({
   library(dowser)
@@ -10,7 +10,7 @@ suppressMessages({
   library(treeio)
 })
 
-source("scripts/analysis/tree_functions.R")
+source("scripts/utils/phylo_utilities.R")
 
 # -------------------------- Command line Argument parsing --------------------------
 args <- commandArgs(trailingOnly = TRUE)

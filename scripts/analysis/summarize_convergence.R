@@ -1,11 +1,8 @@
 #!/usr/bin/env Rscript
-
-# generate_convergence_summary.R
-
 suppressMessages(library(dowser))
 suppressMessages(library(airr))
 suppressMessages(library(stringr))
-source("scripts/analysis/tree_functions.R")
+source("scripts/utils/phylo_utilities.R")
 
 # ------------------ Constants ------------------ #
 DEFAULT_ESS_CUTOFF <- 100

@@ -8,12 +8,12 @@ suppressMessages({
   library(stringr)
 })
 
-source("scripts/analysis/tree_functions.R")
+source("scripts/utils/phylo_utilities.R")
 
 # Get arguments
 args <- commandArgs(trailingOnly = TRUE)
 if (length(args) < 8) {
-  cat("Usage: Rscript publication_plots.R summary_files simulation_names analysis_type rev_suffixes selected_models selected_configs plot_type output_dir [skip_convergence]\n")
+  cat("Usage: Rscript create_main_figures.R summary_files simulation_names analysis_type rev_suffixes selected_models selected_configs plot_type output_dir [skip_convergence]\n")
   cat("plot_type options:\n")
   cat("  'main' - both primary and GC re-entry simulations, 1:1 configs, three metrics (height/RF/MRCA)\n")
   cat("  'supp_all_metrics' - both primary and GC re-entry simulations, 1:3 configs, three metrics\n") 

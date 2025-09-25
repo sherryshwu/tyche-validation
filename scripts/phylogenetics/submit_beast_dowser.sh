@@ -146,7 +146,7 @@ fi
 echo "Running BEAST dowser analysis - $step_description..." | tee -a "$LOG_FILE"
 
 # Run single BEAST job with all parameters
-Rscript scripts/beast/run_beast_dowser.R \
+Rscript scripts/phylogenetics/run_beast_dowser.R \
 "${TASK_ID}" \
 "$JOB_COMBINATIONS_FILE" \
 "$simulation_run" \

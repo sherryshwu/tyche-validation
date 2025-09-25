@@ -1,5 +1,5 @@
 #!/usr/bin/env Rscript
-source("scripts/analysis/tree_functions.R")
+source("scripts/utils/phylo_utilities.R")
 suppressMessages({
   library(ggtree)
   library(treeio)

@@ -7,8 +7,8 @@ rev_suffix="${3:-irrev}"               # irrev or rev
 max_jobs_at_once=20                    # how many jobs to run in parallel
 
 # Script locations
-run_script="${PROJECT_ROOT}/scripts/beast/run_beast_dowser.sh"
-combo_script="${PROJECT_ROOT}/scripts/beast/create_beast_job_combinations.sh"
+run_script="${PROJECT_ROOT}/scripts/phylogenetics/submit_beast_dowser.sh"
+combo_script="${PROJECT_ROOT}/scripts/phylogenetics/create_phylo_job_grid.sh"
 
 # Convert rev_suffix to boolean
 if [[ "$rev_suffix" == "rev" ]]; then
