@@ -16,8 +16,9 @@ if (length(args) < 8) {
   cat("Usage: Rscript create_main_figures.R summary_files simulation_names analysis_type rev_suffixes selected_models selected_configs plot_type output_dir [skip_convergence]\n")
   cat("plot_type options:\n")
   cat("  'main' - both primary and GC re-entry simulations, 1:1 configs, three metrics (height/RF/MRCA)\n")
-  cat("  'supp_all_metrics' - both primary and GC re-entry simulations, 1:3 configs, three metrics\n") 
+  cat("  'supp_all_metrics_1to3' - both primary and GC re-entry simulations, 1:3 configs, three metrics\n")
   cat("  'supp_tree_length' - both primary and GC re-entry simulations, all configs, tree length analysis\n")
+  cat("  'supp_all_metrics_incl_clone_19' - both primary and GC re-entry simulations, 1:1 configs, three metrics (height/RF/MRCA)\n")
   quit(status = 1)
 }
 
@@ -27,9 +28,14 @@ analysis_type <- args[3]
 rev_suffixes <- strsplit(args[4], ",")[[1]]
 selected_models <- strsplit(args[5], ",")[[1]]
 selected_configs <- strsplit(args[6], ",")[[1]]
-plot_type <- args[7]  # "main" or "supp_all_metrics" or "supp_tree_length"
+plot_type <- args[7]  # "main" or "supp_all_metrics_1to3" or "supp_tree_length"
 output_dir <- args[8]
 skip_convergence_filtering <- length(args) >= 9 && args[9] == "skip_convergence"
+exclude_clone_list <- if (length(args) >= 10) {
+  strsplit(args[10], ",")[[1]]
+} else {
+  character(0)
+}
 
 cat("=== Creating", toupper(plot_type), "Publication Plots ===\n")
 cat("Summary files:", paste(summary_files, collapse = ", "), "\n")
@@ -311,8 +317,8 @@ if (nrow(all_combined_data) > 0) {
         "Selective Evolution\n1:1 GC:Other",
         "Uniform Neutral Evolution\n1:1 GC:Other"
       )),
-      # Create basic simulation-specific labels (for main and supp_all_metrics)
-      facet_label_with_sim = if (plot_type %in% c("main", "supp_all_metrics")) {
+      # Create basic simulation-specific labels (for main and supp_all_metrics_1to3 and supp_all_metrics_incl_clone19)
+      facet_label_with_sim = if (plot_type %in% c("main", "supp_all_metrics_1to3", "supp_all_metrics_incl_clone19")) {
         case_when(
           simulation_name == "gc_reentry_hunter" & grepl("_sel$", config) ~ "Selective Evolution (GC re-entry)",
           simulation_name == "gc_reentry_hunter" & grepl("_neu$", config) ~ "Uniform Neutral Evolution (GC re-entry)",
@@ -357,6 +363,13 @@ if (nrow(all_combined_data) > 0) {
       ))
     ) %>%
     filter(config %in% selected_configs)
+
+  # Exclude specific clones if provided
+  if (length(exclude_clone_list) > 0) {
+    cat("Excluding specific clones:", paste(exclude_clone_list, collapse = ", "), "\n")
+    summary_data <- summary_data %>%
+      filter(!(clone_id %in% exclude_clone_list & simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_neu"))
+  }
   write_csv(summary_data, file.path(plot_data_dir, paste0("summary_data_", plot_type, ".csv")))
   cat("After filtering:", nrow(summary_data), "data rows for plotting\n")
 }
@@ -367,18 +380,25 @@ plots <- list()
 if (plot_type == "main") {
   output_figure_dir <- pub_plots_dir
   facet_column <- "facet_label_with_sim"
-} else if (plot_type == "supp_all_metrics") {
+} else if (plot_type == "supp_all_metrics_1to3") {
   output_figure_dir <- supp_plots_dir
   facet_column <- "facet_label_with_sim"
 } else if (plot_type == "supp_tree_length") {
   output_figure_dir <- supp_plots_dir
   facet_column <- "facet_label_detailed"
+} else if (plot_type == "supp_all_metrics_incl_clone19") {
+  output_figure_dir <- supp_plots_dir
+  facet_column <- "facet_label_with_sim"
+} else {
+  cat("ERROR: Unknown plot type:", plot_type, "\n")
+  quit(status = 1)
 }
 
-if (plot_type %in% c("main", "supp_all_metrics")) {
+if (plot_type %in% c("main", "supp_all_metrics_1to3", "supp_all_metrics_incl_clone19")) {
   cat("Creating three-metric publication figures...\n")
-  cat("Target for main: Two simulations x Two 1:1 configs = Four panels\n")
-  cat("Target for supp_all_metrics: Two simulations x Two 1:3 configs = Four panels\n")
+  cat("Target for main: Two simulations x Two 1:1 configs x Three metrics = Twelve panels\n")
+  cat("Target for supp_all_metrics_incl_clone19: Two simulations x Two 1:1 configs x Three metrics = Twelve panels\n")
+  cat("Target for supp_all_metrics_1to3: One simulation x Two 1:3 configs = Two panels\n")
   cat("Using facet column:", facet_column, "\n")
 
   # Create individual plots
