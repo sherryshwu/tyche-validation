@@ -287,7 +287,7 @@ PLOT_JOB_ID=$(sbatch --parsable \
         source /optnfs/common/miniconda3/etc/profile.d/conda.sh
         conda activate r_phylo
         cd \"$PROJECT_ROOT\"
-        Rscript scripts/plotting/plot_trees.R \
+        Rscript scripts/visualization/plot_trees.R \
             \"$JOB_LIST_FILE\" \
             \"\$SLURM_ARRAY_TASK_ID\" \
             \"$TREE_ANALYSIS_DIR\" \

@@ -8,8 +8,33 @@ source("scripts/utils/phylo_utilities.R")
 DEFAULT_ESS_CUTOFF <- 100
 DEFAULT_BURNIN <- 10
 DEFAULT_NPROC <- 4
-DEFAULT_NPROC_FMT <- 20
+DEFAULT_NPROC_FMT <- 4
 DEFAULT_MCMC_LENGTH <- 1e8
+
+# Compute clone-specific convergence for trees
+compute_convergence <- function(trees, ignore_params, ess_cutoff) {
+  trees$below_ESS <- integer(nrow(trees))
+
+  for (j in seq_len(nrow(trees))) {
+    params <- trees$parameters[[j]]
+
+    if (is.null(params) || !"ESS" %in% names(params)) {
+      trees$below_ESS[j] <- 1
+      next
+    }
+
+    # Filter out ignored parameters
+    for (ignore_param in ignore_params) {
+      params <- params[!grepl(ignore_param, params$item), ]
+    }
+
+    # Check ESS values
+    below_ess_idx <- which(params$ESS < ess_cutoff)
+    trees$below_ESS[j] <- length(below_ess_idx)
+  }
+
+  return(trees)
+}
 
 # Create clones from raw AIRR data
 create_clones_from_airr <- function(config_name, simulation_name, analysis_scope, rev_suffix, model_type) {
@@ -68,7 +93,6 @@ create_clones_from_airr <- function(config_name, simulation_name, analysis_scope
   clones <- formatClones(
     analysis_data,
     traits      = c("location", "time", "celltype"),
-    germ        = "germline_alignment",
     chain       = "H",
     nproc       = DEFAULT_NPROC_FMT,
     collapse    = TRUE,
@@ -84,7 +108,7 @@ create_clones_from_airr <- function(config_name, simulation_name, analysis_scope
   # Save processed clones for future use
   processed_data_dir <- file.path(PROJECT_ROOT, simulation_name, "data/processed", analysis_scope)
   dir.create(processed_data_dir, recursive = TRUE, showWarnings = FALSE)
-  clones_file <- file.path(processed_data_dir, paste0(config_name, "_", rev_suffix, "_filtered_clones.rds"))
+  clones_file <- file.path(processed_data_dir, "filtered_clones", paste0(config_name, "_", rev_suffix, "_filtered_clones.rds"))
   saveRDS(clones, clones_file)
   cat("Saved recreated clones to:", clones_file, "\n")
 
@@ -137,25 +161,23 @@ for (i in seq_len(nrow(unique_jobs))) {
 
   cat("\n--- Processing:", config_name, "-", template_name, "(", model_type, ") ---\n")
 
+  # Calculate ignore_params for the config-template combination
+  ignore_params <- build_ignore_vector(template_name, model_type, analysis_type)
+
   # Try to load existing dowser files
   trees <- NULL
   trees_source <- NULL
 
   # Try standard naming: config_name_template_name_all_trees.rds
-  if (is.null(trees)) {
-    standard_file <- file.path(dowser_processed_trees_dir, paste0(config_name, "_", template_name, "_all_trees.rds"))
-    if (file.exists(standard_file)) {
-      cat("Found standard dowser file:", standard_file, "\n")
-      trees <- readRDS(standard_file)
-      trees_source <- "standard_dowser"
-    }
+  standard_file <- file.path(dowser_processed_trees_dir, paste0(config_name, "_", template_name, "_all_trees.rds"))
+  if (file.exists(standard_file)) {
+    cat("Found standard dowser file:", standard_file, "\n")
+    trees <- readRDS(standard_file)
+    trees_source <- "standard_dowser"
   }
 
   # Check if loaded trees have convergence info
-  if (!is.null(trees) && is.data.frame(trees) && "below_ESS" %in% names(trees)) {
-    cat("Loaded trees with existing convergence information from", trees_source, "\n")
-    cat("Trees data frame has", nrow(trees), "rows and columns:", paste(names(trees), collapse = ", "), "\n")
-  } else {
+  if (is.null(trees) || !is.data.frame(trees) || !"parameters" %in% names(trees)) {
     # Fallback to readBEAST if no dowser files or missing convergence info
     if (is.null(trees)) {
       cat("No dowser files found, using readBEAST fallback...\n")
@@ -164,7 +186,7 @@ for (i in seq_len(nrow(unique_jobs))) {
     }
 
     # Check for clones file first
-    clones_file <- file.path(processed_data_dir, paste0(config_name, "_", rev_suffix, "_filtered_clones.rds"))
+    clones_file <- file.path(processed_data_dir, "filtered_clones", paste0(config_name, "_", rev_suffix, "_filtered_clones.rds"))
     clones_data <- NULL
 
     if (file.exists(clones_file)) {
@@ -206,37 +228,6 @@ for (i in seq_len(nrow(unique_jobs))) {
       cat("Created", nrow(trees), "tree objects using readBEAST\n")
       trees_source <- "readBEAST"
 
-      # Compute below_ESS for readBEAST output
-      cat("Computing ESS convergence for readBEAST trees...\n")
-      ignore_params <- build_ignore_vector(template_name, model_type, analysis_type)
-
-      trees$below_ESS <- integer(nrow(trees))
-      trees$failing_params <- character(nrow(trees))
-
-      for (j in seq_len(nrow(trees))) {
-        params <- trees@info$parameters[[j]]
-
-        if (is.null(params) || !"ESS" %in% names(params)) {
-          trees$below_ESS[j] <- 1
-          trees$failing_params[j] <- "no_ESS_data"
-          next
-        }
-
-        # Filter out ignored parameters
-        for (ignore_param in ignore_params) {
-          params <- params[!grepl(ignore_param, params$item), ]
-        }
-
-        # Check ESS values
-        below_ess_idx <- which(params$ESS < DEFAULT_ESS_CUTOFF)
-        trees$below_ESS[j] <- length(below_ess_idx)
-        trees$failing_params[j] <- if (length(below_ess_idx) > 0) {
-          paste(params$item[below_ess_idx], collapse = ";")
-        } else {
-          ""
-        }
-      }
-
       # Save the readBEAST results with convergence info
       dir.create(dowser_processed_trees_dir, recursive = TRUE, showWarnings = FALSE)
       readbeast_file <- file.path(dowser_processed_trees_dir, paste0(config_name, "_", template_name, "_all_trees.rds"))
@@ -245,12 +236,18 @@ for (i in seq_len(nrow(unique_jobs))) {
 
     }, error = function(e) {
       cat("Error calling readBEAST:", e$message, "\n")
-      next
+      trees <<- NULL
+      trees_source <<- NULL
     })
   }
 
-  if (is.null(trees) || !"below_ESS" %in% names(trees)) {
-    cat("Warning: Could not load or create trees with convergence info for", config_name, template_name, "\n")
+  # Compute convergence for all trees (loaded - getTimeTrees and generated - readBEAST)
+  if (!is.null(trees) && is.data.frame(trees) && "parameters" %in% names(trees)) {
+    cat("Computing ESS convergence...\n")
+    trees <- compute_convergence(trees, ignore_params, DEFAULT_ESS_CUTOFF)
+    cat("After calculation:", sum(trees$below_ESS > 0), "unconverged clones\n")
+  } else {
+    cat("Warning: Could not load or create valid trees for", config_name, template_name, "\n")
     next
   }
 
@@ -286,7 +283,6 @@ for (i in seq_len(nrow(unique_jobs))) {
   cat("Converged trees saved to:", converged_trees_file, "\n")
 
   # Create detailed convergence summary
-  ignore_params <- build_ignore_vector(template_name, model_type, analysis_type)
   convergence_summary <- data.frame(
     config_name = config_name,
     template_id = template_name,

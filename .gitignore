@@ -4,6 +4,7 @@ gc_reentry_hunter
 figures
 logs
 Rplots.pdf
+scripts/templates
 
 # R files
 .Rhistory

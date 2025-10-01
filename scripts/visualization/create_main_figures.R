@@ -266,7 +266,13 @@ if (nrow(all_combined_data) > 0) {
 
   # Make join keys comparable and filter out unconverged clones
   filtered_data_initial <- filtered_data_initial %>%
-    mutate(clone_id = as.character(clone_id))
+    mutate(clone_id = as.character(clone_id)) %>%
+    mutate(
+      clone_id = as.character(clone_id),
+      model_short = get_model_short_name(template_name)
+    ) %>%
+    filter(model_short %in% selected_models)
+
   conv_exclusions_by_config <- conv_exclusions_by_config %>%
     mutate(clone_id = as.character(clone_id))
 
@@ -285,10 +291,8 @@ if (nrow(all_combined_data) > 0) {
       tree_height_prop_error = (beast_tree_height - true_tree_height) / true_tree_height,
       tree_length_prop_error = (beast_tree_length - true_tree_length) / true_tree_length,
       mrca_cell_type_accuracy = 100 * mrca_cell_type_accuracy,
-      clone_id = factor(clone_id, levels = as.character(1:20)),
-      model_short = get_model_short_name(template_name)
+      clone_id = factor(clone_id, levels = as.character(1:20))
     ) %>%
-    filter(model_short %in% selected_models) %>%
     mutate(
       model_short = factor(model_short, levels = selected_models),
       model_display = factor(model_labels[as.character(model_short)],
@@ -378,76 +382,154 @@ if (plot_type %in% c("main", "supp_all_metrics")) {
   cat("Using facet column:", facet_column, "\n")
 
   # Create individual plots
-  if (length(summary_data$tree_height_prop_error) > 0) {
-    plots$height <- save_metric_plot(
-      metric_col = "tree_height_prop_error",
-      y_label = "Tree Height\nProportional Error",
-      show_x_labels = FALSE,
-      add_reference_line = TRUE,
-      reference_value = 0,
-      facet_col = facet_column
-    ) + theme(
-      text = element_text(size = 8),
-      strip.text = element_text(size = 9)  # Keep strip text for top row
-    )
+  # Split data by simulation
+  data_primary <- summary_data %>% filter(simulation_name == "tltt_08_20")
+  data_secondary <- summary_data %>% filter(simulation_name == "gc_reentry_hunter")
+
+  # Create plots for PRIMARY simulation
+  plots_primary <- list()
+
+  if (nrow(data_primary) > 0) {
+    # Temporarily replace summary_data with primary data
+    summary_data_backup <- summary_data
+    summary_data <- data_primary
+
+    if (length(data_primary$tree_height_prop_error) > 0) {
+      plots_primary$height <- save_metric_plot(
+        metric_col = "tree_height_prop_error",
+        y_label = "Tree Height\nProportional Error",
+        show_x_labels = FALSE,
+        add_reference_line = TRUE,
+        reference_value = 0,
+        facet_col = facet_column,
+        ncol = 2
+      ) + theme(
+        text = element_text(size = 8),
+        strip.text = element_text(size = 9)
+      )
+    }
+
+    if (length(data_primary$rf_distance) > 0) {
+      plots_primary$rf_distance <- save_metric_plot(
+        metric_col = "rf_distance",
+        y_label = "RF Distance",
+        show_x_labels = FALSE,
+        add_reference_line = TRUE,
+        reference_value = 0,
+        facet_col = facet_column,
+        ncol = 2
+      ) + theme(
+        text = element_text(size = 8),
+        strip.text = element_blank()
+      )
+    }
+
+    if (length(data_primary$mrca_cell_type_accuracy) > 0) {
+      plots_primary$mrca <- save_metric_plot(
+        metric_col = "mrca_cell_type_accuracy",
+        y_label = "Ancestral Cell\nType Accuracy (%)",
+        show_x_labels = TRUE,
+        add_reference_line = TRUE,
+        reference_value = 100,
+        facet_col = facet_column,
+        ncol = 2
+      ) + theme(
+        text = element_text(size = 8),
+        strip.text = element_blank()
+      )
+    }
+
+    # Restore summary_data
+    summary_data <- summary_data_backup
   }
 
-  if (length(summary_data$rf_distance) > 0) {
-    plots$rf_distance <- save_metric_plot(
-      metric_col = "rf_distance",
-      y_label = "RF Distance",
-      show_x_labels = FALSE,
-      add_reference_line = TRUE,
-      reference_value = 0,
-      facet_col = facet_column
-    ) + theme(
-      text = element_text(size = 8),
-      strip.text = element_blank()  # Remove strip text for middle row
-    )
+  # Create plots for SECONDARY simulation
+  plots_secondary <- list()
+
+  if (nrow(data_secondary) > 0) {
+    # Temporarily replace summary_data with secondary data
+    summary_data_backup <- summary_data
+    summary_data <- data_secondary
+
+    if (length(data_secondary$tree_height_prop_error) > 0) {
+      plots_secondary$height <- save_metric_plot(
+        metric_col = "tree_height_prop_error",
+        y_label = "",  # No y-label for right panel
+        show_x_labels = FALSE,
+        add_reference_line = TRUE,
+        reference_value = 0,
+        facet_col = facet_column,
+        ncol = 2
+      ) + theme(
+        text = element_text(size = 8),
+        strip.text = element_text(size = 9),
+        axis.text.y = element_text(size = 6)  # Keep y-axis text
+      )
+    }
+
+    if (length(data_secondary$rf_distance) > 0) {
+      plots_secondary$rf_distance <- save_metric_plot(
+        metric_col = "rf_distance",
+        y_label = "",
+        show_x_labels = FALSE,
+        add_reference_line = TRUE,
+        reference_value = 0,
+        facet_col = facet_column,
+        ncol = 2
+      ) + theme(
+        text = element_text(size = 8),
+        strip.text = element_blank(),
+        axis.text.y = element_text(size = 6)
+      )
+    }
+
+    if (length(data_secondary$mrca_cell_type_accuracy) > 0) {
+      plots_secondary$mrca <- save_metric_plot(
+        metric_col = "mrca_cell_type_accuracy",
+        y_label = "",
+        show_x_labels = TRUE,
+        add_reference_line = TRUE,
+        reference_value = 100,
+        facet_col = facet_column,
+        ncol = 2
+      ) + theme(
+        text = element_text(size = 8),
+        strip.text = element_blank(),
+        axis.text.y = element_text(size = 6)
+      )
+    }
+
+    # Restore summary_data
+    summary_data <- summary_data_backup
   }
 
-  if (length(summary_data$mrca_cell_type_accuracy) > 0) {
-    plots$mrca <- save_metric_plot(
-      metric_col = "mrca_cell_type_accuracy",
-      y_label = "Ancestral Cell\nType Accuracy (%)",
-      show_x_labels = TRUE,
-      add_reference_line = TRUE,
-      reference_value = 100,
-      facet_col = facet_column
-    ) + theme(
-      text = element_text(size = 8),
-      strip.text = element_blank()  # Remove strip text for bottom row
-    )
-  }
-
-  # Save individual plots
-  if (!is.null(plots$height)) {
-    ggsave(file.path(output_figure_dir, paste0(plot_type, "_tree_height.pdf")),
-           plots$height, width = 12, height = 8)
-  }
-
-  if (!is.null(plots$rf_distance)) {
-    ggsave(file.path(output_figure_dir, paste0(plot_type, "_rf_distance.pdf")),
-           plots$rf_distance, width = 12, height = 8)
-  }
-
-  if (!is.null(plots$mrca)) {
-    ggsave(file.path(output_figure_dir, paste0(plot_type, "_mrca_accuracy.pdf")),
-           plots$mrca, width = 12, height = 8)
-  }
-
-  # Create combined plot
-  if (length(plots) >= 3) {
-    combined_plot <- plots$height / plots$rf_distance / plots$mrca +
+  # Create combined plots for each simulation
+  if (length(plots_primary) >= 3) {
+    combined_plot_primary <- plots_primary$height / plots_primary$rf_distance / plots_primary$mrca +
       plot_layout(heights = c(1, 1, 1)) &
       theme(
         strip.background = element_blank(),
         strip.placement = "outside",
-        plot.margin = margin(1, 2, 1, 2) # t, r, b, l
+        plot.margin = margin(1, 2, 1, 2)
       )
+  }
+
+  if (length(plots_secondary) >= 3) {
+    combined_plot_secondary <- plots_secondary$height / plots_secondary$rf_distance / plots_secondary$mrca +
+      plot_layout(heights = c(1, 1, 1)) &
+      theme(
+        strip.background = element_blank(),
+        strip.placement = "outside",
+        plot.margin = margin(1, 2, 1, 2)
+      )
+  }
+
+  # Combine both side by side
+  if (exists("combined_plot_primary") && exists("combined_plot_secondary")) {
+    final_combined_plot <- combined_plot_primary | combined_plot_secondary
 
     ggsave(file.path(output_figure_dir, paste0(plot_type, "_combined_metrics.pdf")),
-           combined_plot, width = 7, height = 3.5)
+           final_combined_plot, width = 7, height = 3.5)
 
     cat("✓ Main publication plots saved\n")
   }
