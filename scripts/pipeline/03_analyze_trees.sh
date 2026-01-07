@@ -1,6 +1,6 @@
 #!/bin/bash
 # Get parameters
-SIMULATION_NAME="${1:-tltt_08_20}"
+SIMULATION_NAME="${1:-tltt_12_19}"
 ANALYSIS_TYPE="${2:-main_analysis}"
 REV_SUFFIX="${3:-irrev}"
 

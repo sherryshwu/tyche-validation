@@ -107,8 +107,10 @@ create_clones_from_airr <- function(config_name, simulation_name, analysis_scope
 
   # Save processed clones for future use
   processed_data_dir <- file.path(PROJECT_ROOT, simulation_name, "data/processed", analysis_scope)
+  filtered_clones_dir <- file.path(processed_data_dir, "filtered_clones")
   dir.create(processed_data_dir, recursive = TRUE, showWarnings = FALSE)
-  clones_file <- file.path(processed_data_dir, "filtered_clones", paste0(config_name, "_", rev_suffix, "_filtered_clones.rds"))
+  dir.create(filtered_clones_dir, recursive = TRUE, showWarnings = FALSE)
+  clones_file <- file.path(filtered_clones_dir, paste0(config_name, "_", rev_suffix, "_filtered_clones.rds"))
   saveRDS(clones, clones_file)
   cat("Saved recreated clones to:", clones_file, "\n")
 

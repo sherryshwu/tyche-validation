@@ -30,21 +30,13 @@ def generate_config_files(simulation_dir):
                 "sample_size": 10
             }
         ],
-        "HEAVY_SHM_PER_SITE": 0.0008908272571108565,
-        "LIGHT_SHM_PER_SITE": 0.0004923076923076923,
-        "TARGET_MUTATIONS_HEAVY": 10,
-        "TARGET_MUTATIONS_LIGHT": 0,
         "UNIFORM": False,
         "SELECTION": True,
         "RESULTS_DIR": "/home/sample_config_results",
         "MULTIPLIER": 2,
         "DEV": False,
         "FASTA": False,
-        "VERBOSE": False,
-        "CDR_DIST": "exponential",
-        "CDR_VAR": 0.995,
-        "FWR_DIST": "constant",
-        "FWR_VAR": 2
+        "VERBOSE": False
     }
     
     # Create descriptive filename with all parameters
@@ -97,7 +89,7 @@ def generate_config_files(simulation_dir):
                 config["UNIFORM"] = evolution["uniform"]
                 config["SELECTION"] = evolution["selection"]
                 
-                filename = create_filename(sample_times_label, ratio_label, evolution["type"])
+                filename = create_filename(ratio_label, evolution["type"])
                 
                 with open(os.path.join(config_dir, filename), 'w') as f:
                     json.dump(config, f, indent=2)

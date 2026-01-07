@@ -26,8 +26,6 @@ case "$analysis_scope" in
             "ExpectedOccupancy_FixedClockRates"
             "ExpectedOccupancy_EstClockRates"
             "InstantSwitch_EstClockRates"
-            "MixedSwitch_FixedClockRates"
-            "MixedSwitch_EstClockRates"
         )
         competing_templates=(
             "StrictClock_AncestralReconstruction"

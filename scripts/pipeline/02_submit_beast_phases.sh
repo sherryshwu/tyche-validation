@@ -1,7 +1,7 @@
 #!/bin/bash
 # Configuration
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
-simulation_run="${1:-tltt_08_20}"
+simulation_run="${1:-tltt_12_19}"
 analysis_scope="${2:-main_analysis}"   # main_analysis, sub_analysis, differentiation_analysis
 rev_suffix="${3:-irrev}"               # irrev or rev
 max_jobs_at_once=20                    # how many jobs to run in parallel

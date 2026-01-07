@@ -7,10 +7,7 @@
 #SBATCH --time=144:00:00
 #SBATCH --output=/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out
 #SBATCH --error=/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err
-#SBATCH --account=hoehnlab
-#SBATCH --nodelist=t01
-#SBATCH --partition=preempt_t01
-#SBATCH --qos=lab_priority
+#SBATCH --account=hoehnlab-share
 
 set -e
 

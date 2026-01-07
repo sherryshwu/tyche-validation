@@ -16,7 +16,7 @@ set -e
 
 # Configuration
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
-simulation_run="tltt_08_20"
+simulation_run="tltt_12_19"
 n_clones=20
 n_processors=$n_clones
 seed=12345
@@ -54,7 +54,7 @@ echo "=== Starting simulation at $(date) ===" | tee -a "$log_file"
 # Step 1: Generate configurations
 echo "Step 1: Generating configurations..." | tee -a "$log_file"
 # Generate configs
-python scripts/beast/generate_simble_configs.py "$simulation_dir" >> "$log_file" 2>&1
+python scripts/phylogenetics/generate_simble_configs.py "$simulation_dir" >> "$log_file" 2>&1
 
 # Count configs
 config_count=$(find "$configs_dir" -name "*.json" 2>/dev/null | wc -l)

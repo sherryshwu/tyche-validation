@@ -1,21 +1,23 @@
 #!/bin/bash
 # setup_gc_reentry.sh
 CONFIG_NAME="${1:-config_ratio_1to1_sel}"
-DIR_SUFFIX="${2:-8_28}"
+DIR_SUFFIX="${2:-12_18}"
 
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
-HUNTER_SIMULATION_NAME="gc_reentry_hunter"
+HUNTER_SIMULATION_NAME="gc_reentry_hunter_${DIR_SUFFIX}"
 REV_SUFFIX="rev"
 ANALYSIS_TYPE="main_analysis"
 config_name="$CONFIG_NAME"
 
 # Hunter's source directories
-HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/simble_sims_gc_reentry_${DIR_SUFFIX}/"
-HUNTER_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/beast_results_${DIR_SUFFIX}/"
+# HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/simble_sims_gc_reentry_${DIR_SUFFIX}/"
+# HUNTER_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/beast_results_${DIR_SUFFIX}/"
+HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/gc_recall_sims/simble_sims_gc_reentry_${DIR_SUFFIX}/"
+HUNTER_BEAST_SOURCE="/dartfs-hpc/scratch/f007p0j/gc_recall_sims/12_18_MSD"
 
 # Conditional dowser source path based on config name
 if [[ "$config_name" == *"1to1_sel"* ]]; then
-    HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}_sherry/"
+    HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}_-200_MSD/"
     echo "Using Sherry-specific dowser source for config: $config_name"
 else
     HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}/"
@@ -154,6 +156,12 @@ fi
 # 4. Create configs directory
 HUNTER_CONFIGS_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/configs"
 mkdir -p "$HUNTER_CONFIGS_DIR"
+
+# Remove older files
+find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_hunter_${DIR_SUFFIX}/results/main_analysis/rev/competing_models/beast_raw_output/ -type f -mtime +30 -delete
+find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_hunter_${DIR_SUFFIX}/results/main_analysis/rev/tyche_models/beast_raw_output/ -type f -mtime +30 -delete
+find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_hunter_${DIR_SUFFIX}/results/main_analysis/rev/tree_analysis -type f -mtime +30 -delete
+echo "Old BEAST result files older than 30 days have been removed"
 
 echo ""
 echo "✓ Hunter's data setup complete!"

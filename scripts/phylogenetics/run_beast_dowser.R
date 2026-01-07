@@ -2,7 +2,7 @@
 suppressMessages(library(dowser))
 suppressMessages(library(airr))
 suppressMessages(library(stringr))
-source("scripts/analysis/tree_functions.R")
+source("scripts/utils/phylo_utilities.R")
 
 # ------------------ Constants and configuration ------------------ #
 # Default parameters for BEAST and dowser analysis
@@ -23,11 +23,9 @@ TEMPLATE_MAP <- c(
   # GC strict clock model
   "StrictClock_Standard"                                   = "StrictClock/StrictClock_Standard_EmpFreq.xml",
   # TyCHE models
-  "ExpectedOccupancy_FixedClockRates"                      = "TypeLinked/TraitLinkedExpectedOccupancy_FixedTraitClockRates_EmpFreq.xml",
-  "ExpectedOccupancy_EstClockRates"                        = "TypeLinked/TraitLinkedExpectedOccupancy_EstTraitClockRates_EmpFreq.xml",
-  "MixedSwitch_FixedClockRates"                            = "TypeLinked/TraitLinkedMixedSwitch_FixedTraitClockRates_EmpFreq.xml",
-  "MixedSwitch_EstClockRates"                              = "TypeLinked/TraitLinkedMixedSwitch_EstTraitClockRates_EmpFreq.xml",
-  "InstantSwitch_EstClockRates"                            = "TypeLinked/TraitLinkedInstantSwitch_EstTraitClockRates_EmpFreq.xml",
+  "ExpectedOccupancy_FixedClockRates"                      = "TypeLinked/TypeLinkedExpectedOccupancy_FixedTraitClockRates_EmpFreq.xml",
+  "ExpectedOccupancy_EstClockRates"                        = "TypeLinked/TypeLinkedExpectedOccupancy_EstTraitClockRates_EmpFreq.xml",
+  "InstantSwitch_EstClockRates"                            = "TypeLinked/TypeLinkedInstantSwitch_EstTraitClockRates_EmpFreq.xml",
   # Competing models
   "StrictClock_AncestralReconstruction"                    = "StrictClock/StrictClock_AncestralReconstruction_EmpFreq.xml",
   "UCRelaxedClock_AncestralReconstruction"                 = "UCLD/UCRelaxedClock_AncestralReconstruction_EmpFreq.xml",
@@ -74,13 +72,13 @@ if (analysis_scope == "sub_analysis" && "time_subset" %in% names(job_params)) {
 # Configure analysis-specific parameters
 if (analysis_scope == "main_analysis") {
   trait_param <- "location"
-  template_dir_suffix <- "custom"
+  # template_dir_suffix <- "custom"
 } else if (analysis_scope == "sub_analysis") {
   trait_param <- "location"
-  template_dir_suffix <- "custom"
+  # template_dir_suffix <- "custom"
 } else if (analysis_scope == "differentiation_analysis") {
   trait_param <- "celltype"
-  template_dir_suffix <- if (model_type == "gc_strict_clock") "custom" else "ken_templates"
+  # template_dir_suffix <- if (model_type == "gc_strict_clock") "custom" else "ken_templates"
 }
 
 # ------------------ Helpers ------------------ #
@@ -106,7 +104,9 @@ logKVs("Job", c(
 ))
 
 # Template path setup
-template_dir <- file.path(PROJECT_ROOT, "xml-writer/templates", template_dir_suffix)
+template_dir <- file.path(PROJECT_ROOT, "xml-writer")
+# template_dir <- file.path(PROJECT_ROOT, "xml-writer", template_dir_suffix)
+
 template_file <- TEMPLATE_MAP[[template_id]]
 if (is.null(template_file)) {
   stop("Unknown template ID: ", template_id)
@@ -442,6 +442,7 @@ trees <- getTimeTreesIterate(
   log_target         = DEFAULT_LOG_TARGET,
   seed               = seed + (task_id * 10000),
   # Model-specific parameters
+  TRAIT_NAME         = trait_param,
   TRAIT_RATE_MEAN_1  = TRAIT_RATE_MEAN_1,
   TRAIT_RATE_MEAN_2  = TRAIT_RATE_MEAN_2,
   TRAIT_RATE_SIGMA_1 = TRAIT_RATE_SIGMA_1,
