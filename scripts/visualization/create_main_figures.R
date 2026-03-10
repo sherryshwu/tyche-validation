@@ -143,19 +143,20 @@ conv_exclusions_by_config <- data.frame(config = character(), clone_id = charact
 if (!skip_convergence_filtering) {
   cat("Loading convergence data...\n")
 
-  # Define simulation to rev_suffix mapping
-  sim_rev_mapping <- list(
-    "tltt_08_20" = "irrev",
-    "gc_reentry_hunter" = "rev"
-  )
-
   # Build convergence file paths based on simulation names
   for (sim_name in simulation_names) {
-    rev_suffix <- sim_rev_mapping[[sim_name]]
-    if (is.null(rev_suffix)) {
-      cat("Warning: No rev_suffix defined for simulation", sim_name, "\n")
+    # Define simulation to rev_suffix mapping
+    if (grepl("tltt", sim_name)) {
+      rev_suffix <- "irrev"
+    } else if (grepl("gc_reentry", sim_name)) {
+      rev_suffix <- "rev"
+    } else {
+      cat("Warning: Could not determine rev_suffix for simulation:", sim_name, "- skipping convergence lookup\n")
       next
     }
+
+    cat("Detected", rev_suffix, "model for simulation:", sim_name, "\n")
+
     base_dir <- file.path(project_root, sim_name, "results", analysis_type, rev_suffix)
     convergence_files <- c(
       file.path(base_dir, "tyche_models", "summary", "tyche_models_convergence_summary.csv"),
@@ -320,10 +321,10 @@ if (nrow(all_combined_data) > 0) {
       # Create basic simulation-specific labels (for main and supp_all_metrics_1to3 and supp_all_metrics_incl_clone19)
       facet_label_with_sim = if (plot_type %in% c("main", "supp_all_metrics_1to3", "supp_all_metrics_incl_clone19")) {
         case_when(
-          simulation_name == "gc_reentry_hunter" & grepl("_sel$", config) ~ "Selective Evolution (GC re-entry)",
-          simulation_name == "gc_reentry_hunter" & grepl("_neu$", config) ~ "Uniform Neutral Evolution (GC re-entry)",
-          simulation_name == "tltt_08_20" & grepl("_sel$", config) ~ "Selective Evolution",
-          simulation_name == "tltt_08_20" & grepl("_neu$", config) ~ "Uniform Neutral Evolution",
+          grepl("gc_reentry", simulation_name) & grepl("_sel$", config) ~ "Selective Evolution (GC re-entry)",
+          grepl("gc_reentry", simulation_name) & grepl("_neu$", config) ~ "Uniform Neutral Evolution (GC re-entry)",
+          grepl("tltt", simulation_name) & grepl("_sel$", config) ~ "Selective Evolution",
+          grepl("tltt", simulation_name) & grepl("_neu$", config) ~ "Uniform Neutral Evolution",
           TRUE ~ as.character(facet_label)
         )
       } else {
@@ -333,14 +334,14 @@ if (nrow(all_combined_data) > 0) {
       # Create detailed labels with config info (for supp_tree_length)
       facet_label_detailed = if (plot_type == "supp_tree_length") {
         case_when(
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_sel" ~ "Selective (GC re-entry)\n1:1 GC:Other",
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_sel" ~ "Selective (GC re-entry)\n1:3 GC:Other",
-          simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to3_neu" ~ "Uniform Neutral (GC re-entry)\n1:3 GC:Other",
-          simulation_name == "tltt_08_20" & config == "config_ratio_1to1_sel" ~ "Selective Evolution\n1:1 GC:Other",
-          simulation_name == "tltt_08_20" & config == "config_ratio_1to1_neu" ~ "Uniform Neutral Evolution\n1:1 GC:Other",
-          simulation_name == "tltt_08_20" & config == "config_ratio_1to3_sel" ~ "Selective Evolution\n1:3 GC:Other",
-          simulation_name == "tltt_08_20" & config == "config_ratio_1to3_neu" ~ "Uniform Neutral Evolution\n1:3 GC:Other",
+          grepl("gc_reentry", simulation_name) & config == "config_ratio_1to1_sel" ~ "Selective (GC re-entry)\n1:1 GC:Other",
+          grepl("gc_reentry", simulation_name) & config == "config_ratio_1to1_neu" ~ "Uniform Neutral (GC re-entry)\n1:1 GC:Other",
+          grepl("gc_reentry", simulation_name) & config == "config_ratio_1to3_sel" ~ "Selective (GC re-entry)\n1:3 GC:Other",
+          grepl("gc_reentry", simulation_name) & config == "config_ratio_1to3_neu" ~ "Uniform Neutral (GC re-entry)\n1:3 GC:Other",
+          grepl("tltt", simulation_name) & config == "config_ratio_1to1_sel" ~ "Selective Evolution\n1:1 GC:Other",
+          grepl("tltt", simulation_name) & config == "config_ratio_1to1_neu" ~ "Uniform Neutral Evolution\n1:1 GC:Other",
+          grepl("tltt", simulation_name) & config == "config_ratio_1to3_sel" ~ "Selective Evolution\n1:3 GC:Other",
+          grepl("tltt", simulation_name) & config == "config_ratio_1to3_neu" ~ "Uniform Neutral Evolution\n1:3 GC:Other",
           TRUE ~ as.character(facet_label)
         )
       } else {
@@ -368,7 +369,7 @@ if (nrow(all_combined_data) > 0) {
   if (length(exclude_clone_list) > 0) {
     cat("Excluding specific clones:", paste(exclude_clone_list, collapse = ", "), "\n")
     summary_data <- summary_data %>%
-      filter(!(clone_id %in% exclude_clone_list & simulation_name == "gc_reentry_hunter" & config == "config_ratio_1to1_neu"))
+      filter(!(clone_id %in% exclude_clone_list & simulation_name == "gc_reentry_gc_reentry" & config == "config_ratio_1to1_neu"))
   }
   write_csv(summary_data, file.path(plot_data_dir, paste0("summary_data_", plot_type, ".csv")))
   cat("After filtering:", nrow(summary_data), "data rows for plotting\n")
@@ -403,8 +404,8 @@ if (plot_type %in% c("main", "supp_all_metrics_1to3", "supp_all_metrics_incl_clo
 
   # Create individual plots
   # Split data by simulation
-  data_primary <- summary_data %>% filter(simulation_name == "tltt_08_20")
-  data_secondary <- summary_data %>% filter(simulation_name == "gc_reentry_hunter")
+  data_primary <- summary_data %>% filter(grepl("tltt", simulation_name))
+  data_secondary <- summary_data %>% filter(grepl("gc_reentry", simulation_name))
 
   # Create plots for PRIMARY simulation
   plots_primary <- list()

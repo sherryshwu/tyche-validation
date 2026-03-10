@@ -3,14 +3,18 @@
 
 # Get parameters
 ANALYSIS_TYPE="${1:-main_analysis}"
+SIM_INPUT="${2:-tltt_12_19,gc_reentry_hunter_12_18}"
+
 BASE_PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
+
+SELECTED_SIMULATIONS_LIST=$(echo $SIM_INPUT | tr ',' ' ')
 
 echo "=== Creating Publication Plots: $(date) ==="
 echo "Analysis type: $ANALYSIS_TYPE"
 
 # Setup combined output directory
-COMBINED_PLOTS_DIR="${BASE_PROJECT_ROOT}/figures/${ANALYSIS_TYPE}"
-LOGS_DIR="${BASE_PROJECT_ROOT}/logs/publication_plots"
+COMBINED_PLOTS_DIR="${BASE_PROJECT_ROOT}/figures/dec2025/${ANALYSIS_TYPE}"
+LOGS_DIR="${BASE_PROJECT_ROOT}/logs/dec2025/publication_plots"
 mkdir -p "$COMBINED_PLOTS_DIR" "$LOGS_DIR"
 
 # Setup logging
@@ -31,17 +35,13 @@ case "$ANALYSIS_TYPE" in
         echo "=== Step 1: Creating Main Publication Plots ==="
         echo "Target: Two simulations x Two 1:1 configs = Four panels"
 
-        selected_configs_main="config_ratio_1to1_sel,config_ratio_1to1_neu"
-        selected_simulations="tltt_08_20,gc_reentry_hunter"
+        selected_configs_main="config_ratio_1to1_sel"
 
         # Build summary file paths for both simulations
         SUMMARY_FILES_BOTH=""
-        declare -A sim_rev_map
-        sim_rev_map[tltt_08_20]="irrev"
-        sim_rev_map[gc_reentry_hunter]="rev"
 
-        for sim in tltt_08_20 gc_reentry_hunter; do
-            rev_suffix=${sim_rev_map[$sim]}
+        for sim in $SELECTED_SIMULATIONS_LIST; do
+            if [[ "$sim" == *"hunter"* ]]; then rev_suffix="rev"; else rev_suffix="irrev"; fi
             summary_file="${BASE_PROJECT_ROOT}/${sim}/results/${ANALYSIS_TYPE}/${rev_suffix}/tree_analysis/all_results_summary.csv"
             if [[ -f "$summary_file" ]]; then
                 if [[ -n "$SUMMARY_FILES_BOTH" ]]; then
@@ -76,7 +76,7 @@ case "$ANALYSIS_TYPE" in
             
             Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
-                \"$selected_simulations\" \
+                \"$SIM_INPUT\" \
                 \"$ANALYSIS_TYPE\" \
                 \"$selected_rev_suffixes\" \
                 \"$selected_models\" \
@@ -96,7 +96,7 @@ case "$ANALYSIS_TYPE" in
         echo "Target: Both simulations x 2 configs (1:3 sel and neu) = 4 panels"
 
         selected_configs_supp1="config_ratio_1to3_sel,config_ratio_1to3_neu"
-        SUMMARY_FILE_SUPP="${BASE_PROJECT_ROOT}/tltt_08_20/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
+        SUMMARY_FILE_SUPP="${BASE_PROJECT_ROOT}/tltt_12_19/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
 
         SUPP1_JOB_ID=$(sbatch --parsable \
             --dependency=afterok:${MAIN_JOB_ID} \
@@ -115,7 +115,7 @@ case "$ANALYSIS_TYPE" in
             
             Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
-                \"$selected_simulations\" \
+                \"$SIM_INPUT\" \
                 \"$ANALYSIS_TYPE\" \
                 \"$selected_rev_suffixes\" \
                 \"$selected_models\" \
@@ -153,7 +153,7 @@ case "$ANALYSIS_TYPE" in
             
             Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
-                \"$selected_simulations\" \
+                \"$SIM_INPUT\" \
                 \"$ANALYSIS_TYPE\" \
                 \"$selected_rev_suffixes\" \
                 \"$selected_models\" \
@@ -171,7 +171,7 @@ case "$ANALYSIS_TYPE" in
         echo "Target: Both simulations x 2 configs (1:1 sel and neu) x 3 metrics = 12 panels"
 
         selected_configs_supp3="${selected_configs_main}"
-        SUMMARY_FILE_SUPP="${BASE_PROJECT_ROOT}/tltt_08_20/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
+        SUMMARY_FILE_SUPP="${BASE_PROJECT_ROOT}/tltt_12_19/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
 
         SUPP3_JOB_ID=$(sbatch --parsable \
             --dependency=afterok:${MAIN_JOB_ID} \
@@ -190,7 +190,7 @@ case "$ANALYSIS_TYPE" in
             
             Rscript scripts/visualization/create_main_figures.R \
                 \"$SUMMARY_FILES_BOTH\" \
-                \"$selected_simulations\" \
+                \"$SIM_INPUT\" \
                 \"$ANALYSIS_TYPE\" \
                 \"$selected_rev_suffixes\" \
                 \"$selected_models\" \

@@ -91,7 +91,7 @@ case "$model_type" in
         step_description="Strict Clock on Germinal Center B cells"
         ;;
     tyche_models)
-        step_description="TyCHE models (5 variants) on all B cell populations"
+        step_description="TyCHE models (3 variants) on all B cell populations"
         ;;
     competing_models)
         step_description="Competing models (Strict + UCLD) on all B cell populations"
