@@ -1,4 +1,3 @@
-[submodule "xml-writer"]
-	path = xml-writer
-	url = https://github.com/hoehnlab/xml-writer.git
-	branch = main
+[submodule "xml-templates"]
+	path = xml-templates
+	url = https://github.com/hoehnlab/xml-templates.git
