@@ -104,8 +104,7 @@ logKVs("Job", c(
 ))
 
 # Template path setup
-template_dir <- file.path(PROJECT_ROOT, "xml-writer")
-# template_dir <- file.path(PROJECT_ROOT, "xml-writer", template_dir_suffix)
+template_dir <- file.path(PROJECT_ROOT, "xml-templates")
 
 template_file <- TEMPLATE_MAP[[template_id]]
 if (is.null(template_file)) {

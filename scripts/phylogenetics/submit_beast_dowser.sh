@@ -4,15 +4,18 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=20
 #SBATCH --mem-per-cpu=8gb
-#SBATCH --time=144:00:00
+#SBATCH --time=72:00:00
 #SBATCH --output=/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.out
 #SBATCH --error=/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/slurm-output/%x/slurm-%A/slurm-%A_%a.err
-#SBATCH --account=hoehnlab-share
+#SBATCH --account=hoehnlab
+#SBATCH --nodelist=t01
+#SBATCH --partition=preempt_t01
+#SBATCH --qos=lab_priority
 
 set -e
 
 # Get parameters from command line
-simulation_run=${1:-"tltt_08_20"}
+simulation_run=${1:-"tltt_12_18"}
 analysis_scope=${2}                  # Required: main_analysis, sub_analysis, differentiation_analysis
 model_type=${3}                      # Required: gc_strict_clock, tyche_models, competing_models
 reversible=${4:-false}               # Whether non-GC to GC transitions are allowed
