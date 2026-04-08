@@ -113,11 +113,11 @@ for config_dir in "$raw_data_dir"/config_*; do
         case "$analysis_scope" in
             main_analysis)
                 # Process all configs
-                # # Only process 1to1 sel config for testing
-                # if [[ ! "$config_name" == *"_1to1_sel" ]]; then
-                #     echo "  Skipping $config_name (only 1to1_sel is allowed for main_analysis)"
-                #     continue
-                # fi
+                # Only process 1to1 sel config for testing
+                if [[ ! "$config_name" == *"_1to1_sel" ]]; then
+                    echo "  Skipping $config_name (only 1to1_sel is allowed for main_analysis)"
+                    continue
+                fi
                 ;;
             sub_analysis)
                 # Only process sel and neu configs

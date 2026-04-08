@@ -32,7 +32,7 @@ echo "Tree analysis: $TREE_ANALYSIS_DIR"
 
 # Setup environment
 source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-conda activate r_phylo
+conda activate r_phylo_4.4
 cd "$PROJECT_ROOT"
 
 # =============================================================================

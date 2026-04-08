@@ -71,7 +71,7 @@ case "$ANALYSIS_TYPE" in
             --wrap="
             echo \"Main publication plots started: \$(date)\"
             source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo
+            conda activate r_phylo_4.4_4.4
             cd \"$BASE_PROJECT_ROOT\"
             
             Rscript scripts/visualization/create_main_figures.R \
@@ -110,7 +110,7 @@ case "$ANALYSIS_TYPE" in
             --wrap="
             echo \"Supplementary figure 1 started: \$(date)\"
             source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo
+            conda activate r_phylo_4.4
             cd \"$BASE_PROJECT_ROOT\"
             
             Rscript scripts/visualization/create_main_figures.R \
@@ -148,7 +148,7 @@ case "$ANALYSIS_TYPE" in
             --wrap="
             echo \"Supplementary figure 2 started: \$(date)\"
             source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo
+            conda activate r_phylo_4.4
             cd \"$BASE_PROJECT_ROOT\"
             
             Rscript scripts/visualization/create_main_figures.R \
@@ -185,7 +185,7 @@ case "$ANALYSIS_TYPE" in
             --wrap="
             echo \"Supplementary figure 3 started: \$(date)\"
             source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo
+            conda activate r_phylo_4.4
             cd \"$BASE_PROJECT_ROOT\"
             
             Rscript scripts/visualization/create_main_figures.R \
@@ -274,7 +274,7 @@ case "$ANALYSIS_TYPE" in
                 --wrap="
                     echo \"Differentiation timing job \$SLURM_ARRAY_TASK_ID started: \$(date)\"
                     source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-                    conda activate r_phylo
+                    conda activate r_phylo_4.4
                     cd \"$BASE_PROJECT_ROOT\"
                     
                     Rscript scripts/visualization/create_differentiation_figures.R \

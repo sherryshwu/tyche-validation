@@ -44,7 +44,7 @@ cd "$PROJECT_ROOT"
 
 # Load conda environment
 source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-conda activate r_phylo
+conda activate r_phylo_4.4
 
 # Set up logging
 log_file="$log_dir/01_simulation.log"

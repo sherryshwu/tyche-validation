@@ -15,3 +15,6 @@ scripts/templates
 
 # macOS
 .DS_Store
+
+# Update conda environment
+update_conda_env.sh
