@@ -464,6 +464,9 @@ trees <- getTimeTreesIterate(
   TYPE_SWITCH_BETA = 5.0,
   TRANSITION_RATE_1_INIT = 1.0,
   TRANSITION_RATE_2_INIT = 1.0,
+  # New parameters for TyCHE v-commit7c48674
+  root_trait = "germinal_center",
+  ROOT_TYPE_PROBABILITIES = "",
   # 3-state TyCHE-specific parameters
   TRAIT_RATE_MEAN_3  = TRAIT_RATE_MEAN_3,
   TRAIT_RATE_SIGMA_3 = TRAIT_RATE_SIGMA_3,
