@@ -53,7 +53,7 @@ ensure_neutral_fields <- function(df) {
 }
 
 # Standardized model naming abbreviation
-get_model_short_name <- function(model_name) {
+abbreviate_model <- function(model_name) {
   case_when(
     grepl("ExpectedOccupancy.*Est", model_name) ~ "EO_Est",
     grepl("ExpectedOccupancy.*Fixed", model_name) ~ "EO_Fixed",
@@ -140,11 +140,11 @@ standardize_location_labels <- function(tree_data) {
   return(tree_data)
 }
 
-save_metric_plot <- function(metric_col, y_label, title = NULL,
+save_metric_plot <- function(data, metric_col, y_label, title = NULL,
                              show_x_labels = TRUE, add_reference_line = FALSE,
                              reference_value = NULL, facet_col = "facet_label_with_sim",
                              nrow = 1, ncol = NULL, facet_scales = "fixed") {
-  plot_data <- summary_data
+  plot_data <- data
   plot_data$metric_value <- plot_data[[metric_col]]
 
   p <- ggplot(plot_data, aes(x = model_display, y = metric_value, fill = model_display)) +
@@ -196,7 +196,7 @@ save_compact_plot <- function(plot, filename = NULL, width = 3, height = 1.5,
     axis.text.y = element_text(size = text_size, color = "black"),
     axis.ticks = element_line(linewidth = line_size, color = "black"),
     panel.border = element_rect(color = "black", linewidth = line_size, fill = NA),
-    strip.text = element_text(size = 8, face = "plain", margin = margin(2, 0, 4, 0)),
+    strip.text = element_text(size = text_size, face = "plain", margin = margin(2, 0, 4, 0)),
     strip.background = element_blank(),
     legend.position = legend.position,
     legend.key.size = unit(0.35, "lines"),

@@ -18,7 +18,7 @@ if (length(args) < 6) {
 job_list_file <- args[1]
 array_task_id <- as.numeric(args[2])
 output_dir <- args[3]
-simulation_name <- args[4]  # tltt_08_20, gc_reentry_hunter, etc.
+simulation_name <- args[4]  # tltt_08_20, gc_reentry, etc.
 analysis_type <- args[5]    # main_analysis, differentiation_analysis, etc.
 rev_suffix <- args[6]       # irrev, rev
 
@@ -168,6 +168,12 @@ for (i in seq_along(beast_tree_files)) {
     cat("  Error loading BEAST tree:", e$message, "\n")
     next
   })
+
+  # Rename 'celltype' to 'location' if it exists in BEAST data
+  if ("celltype" %in% colnames(beast_tree@data)) {
+    cat("  Standardizing column: Renaming 'celltype' to 'location' in BEAST tree\n")
+    beast_tree@data <- beast_tree@data %>% rename(location = celltype)
+  }
 
   # Get corresponding true tree
   true_tree <- true_trees[[as.numeric(clone_id)]]

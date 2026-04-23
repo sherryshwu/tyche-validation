@@ -114,10 +114,15 @@ for config_dir in "$raw_data_dir"/config_*; do
             main_analysis)
                 # Process all configs
                 # Only process 1to1 sel config for testing
-                if [[ ! "$config_name" == *"_1to1_sel" ]]; then
-                    echo "  Skipping $config_name (only 1to1_sel is allowed for main_analysis)"
+                if [[ ! "$config_name" == *"_1to1_neu" ]]; then
+                    echo "  Skipping $config_name (only 1to1_neu is allowed for main_analysis)"
                     continue
                 fi
+                # # Process both 1:1 selection and 1:1 neutral
+                # if [[ ! "$config_name" =~ _1to1_(sel|neu)$ ]]; then
+                #     echo "  Skipping $config_name (only 1to1_sel and 1to1_neu allowed)"
+                #     continue
+                # fi
                 ;;
             sub_analysis)
                 # Only process sel and neu configs

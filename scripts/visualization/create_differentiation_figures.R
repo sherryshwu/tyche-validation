@@ -118,7 +118,6 @@ load_true_timing <- function(true_tree_file) {
           mutate(clone_id = as.character(clone_id),
                  tip_type = normalize_tip(celltype),
                  tree_height = max(as.numeric(generation)) - 1,
-                 # Convert time_of_differentiation to numeric
                  rel_differentiation_time = as.numeric(time_of_differentiation) / tree_height,
                  panel = "True") %>%
           filter(tip_type %in% c("MBC", "PC")) %>%

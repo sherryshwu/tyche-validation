@@ -3,7 +3,7 @@
 
 # Get parameters
 ANALYSIS_TYPE="${1:-main_analysis}"
-SIM_INPUT="${2:-tltt_12_19,gc_reentry_hunter_12_18}"
+SIM_INPUT="${2:-tltt_12_19,gc_reentry_12_18}"
 
 BASE_PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
 
@@ -23,7 +23,7 @@ exec > >(tee -a "$MAIN_LOG_FILE")
 exec 2>&1
 
 # Common settings
-selected_models="EO_Fixed,EO_Est,IS_Est,SC_AR,UCLD_AR"
+selected_models="EO_Est,SC_AR,UCLD_AR"
 selected_rev_suffixes="irrev,rev"
 
 case "$ANALYSIS_TYPE" in
@@ -33,15 +33,16 @@ case "$ANALYSIS_TYPE" in
         # Step 1: Main Publication Plots (Cross-simulation comparison)
         echo ""
         echo "=== Step 1: Creating Main Publication Plots ==="
-        echo "Target: Two simulations x Two 1:1 configs = Four panels"
+        echo "Target: Two simulations x One 1:1 config = Two panels"
 
         selected_configs_main="config_ratio_1to1_sel"
+        selected_configs_supp="config_ratio_1to1_neu"
 
         # Build summary file paths for both simulations
         SUMMARY_FILES_BOTH=""
 
         for sim in $SELECTED_SIMULATIONS_LIST; do
-            if [[ "$sim" == *"hunter"* ]]; then rev_suffix="rev"; else rev_suffix="irrev"; fi
+            if [[ "$sim" == *"gc_reentry"* ]]; then rev_suffix="rev"; else rev_suffix="irrev"; fi
             summary_file="${BASE_PROJECT_ROOT}/${sim}/results/${ANALYSIS_TYPE}/${rev_suffix}/tree_analysis/all_results_summary.csv"
             if [[ -f "$summary_file" ]]; then
                 if [[ -n "$SUMMARY_FILES_BOTH" ]]; then
@@ -56,22 +57,20 @@ case "$ANALYSIS_TYPE" in
 
         # Create separate log files for each step
         STEP1_LOG="${LOGS_DIR}/step1_main_plots_$(date +%Y%m%d_%H%M%S).log"
-        STEP2_LOG="${LOGS_DIR}/step2_supp1_plots_$(date +%Y%m%d_%H%M%S).log"
-        STEP3_LOG="${LOGS_DIR}/step3_supp2_plots_$(date +%Y%m%d_%H%M%S).log"
-        STEP4_LOG="${LOGS_DIR}/step4_supp3_plots_$(date +%Y%m%d_%H%M%S).log"
+        STEP2_LOG="${LOGS_DIR}/step2_supp_plots_$(date +%Y%m%d_%H%M%S).log"
 
         MAIN_JOB_ID=$(sbatch --parsable \
             --cpus-per-task=2 \
             --mem-per-cpu=6gb \
             --time=45:00 \
-            --job-name=main-publication-plots \
+            --job-name=main-fig-1to1-sel \
             --output="${STEP1_LOG}" \
             --error="${STEP1_LOG}" \
             --account=hoehnlab-share \
             --wrap="
             echo \"Main publication plots started: \$(date)\"
             source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo_4.4_4.4
+            conda activate r_phylo_4.4
             cd \"$BASE_PROJECT_ROOT\"
             
             Rscript scripts/visualization/create_main_figures.R \
@@ -82,20 +81,17 @@ case "$ANALYSIS_TYPE" in
                 \"$selected_models\" \
                 \"$selected_configs_main\" \
                 \"main\" \
-                \"$COMBINED_PLOTS_DIR\" \
-                \"\" \
-                \"19\"
+                \"$COMBINED_PLOTS_DIR\"
 
             echo \"Main publication plots completed: \$(date)\"
             ")
 
         # =============================================================================
-        # Step 2: Supplementary Figure 1 (both simulations, 1:3 configs)
+        # Step 2: Supplementary Figure 1 (both simulations, 1:1 uniform neutral)
         echo ""
-        echo "=== Step 2: Creating Supplementary Figure 1 (Both Simulations, 1:3 configs) ==="
-        echo "Target: Both simulations x 2 configs (1:3 sel and neu) = 4 panels"
+        echo "=== Step 2: Creating Supplementary Figure 1 (Uniform neutral in both simulations) ==="
+        echo "Target: Both simulations x 1 configs (1:1 neu) = 2 panels"
 
-        selected_configs_supp1="config_ratio_1to3_sel,config_ratio_1to3_neu"
         SUMMARY_FILE_SUPP="${BASE_PROJECT_ROOT}/tltt_12_19/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
 
         SUPP1_JOB_ID=$(sbatch --parsable \
@@ -103,12 +99,12 @@ case "$ANALYSIS_TYPE" in
             --cpus-per-task=2 \
             --mem-per-cpu=6gb \
             --time=30:00 \
-            --job-name=supp1-figure \
+            --job-name=supp-fig-1to1-neu \
             --output="${STEP2_LOG}" \
             --error="${STEP2_LOG}" \
             --account=hoehnlab-share \
             --wrap="
-            echo \"Supplementary figure 1 started: \$(date)\"
+            echo \"Supplementary figure started: \$(date)\"
             source /optnfs/common/miniconda3/etc/profile.d/conda.sh
             conda activate r_phylo_4.4
             cd \"$BASE_PROJECT_ROOT\"
@@ -119,94 +115,17 @@ case "$ANALYSIS_TYPE" in
                 \"$ANALYSIS_TYPE\" \
                 \"$selected_rev_suffixes\" \
                 \"$selected_models\" \
-                \"$selected_configs_supp1\" \
-                \"supp_all_metrics_1to3\" \
+                \"$selected_configs_supp\" \
+                \"supp\" \
                 \"$COMBINED_PLOTS_DIR\"
             
-            echo \"Supplementary figure 1 completed: \$(date)\"
-            ")
-
-        # =============================================================================
-        # Step 3: Supplementary Figure 2 (both simulations, tree length analysis)
-        echo ""
-        echo "=== Step 3: Creating Supplementary Figure 2 (Tree Length Analysis) ==="
-        echo "Target: Both simulations x 4 configs (1:3 and 1:1, sel and neu) = 8 panels"
-
-        selected_configs_supp2="config_ratio_1to1_sel,config_ratio_1to1_neu,config_ratio_1to3_sel,config_ratio_1to3_neu"
-
-        echo "Summary files for supp2: $SUMMARY_FILES_BOTH"
-
-        SUPP2_JOB_ID=$(sbatch --parsable \
-            --dependency=afterok:${SUPP1_JOB_ID} \
-            --cpus-per-task=2 \
-            --mem-per-cpu=6gb \
-            --time=30:00 \
-            --job-name=supp2-figure \
-            --output="${STEP3_LOG}" \
-            --error="${STEP3_LOG}" \
-            --account=hoehnlab-share \
-            --wrap="
-            echo \"Supplementary figure 2 started: \$(date)\"
-            source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo_4.4
-            cd \"$BASE_PROJECT_ROOT\"
-            
-            Rscript scripts/visualization/create_main_figures.R \
-                \"$SUMMARY_FILES_BOTH\" \
-                \"$SIM_INPUT\" \
-                \"$ANALYSIS_TYPE\" \
-                \"$selected_rev_suffixes\" \
-                \"$selected_models\" \
-                \"$selected_configs_supp2\" \
-                \"supp_tree_length\" \
-                \"$COMBINED_PLOTS_DIR\"
-            
-            echo \"Supplementary figure 2 completed: \$(date)\"
-            ")
-        
-        # =============================================================================
-        # Step 4: Supplementary Figure 3 (both simulations, clone 19 included)
-        echo ""
-        echo "=== Step 3: Creating Supplementary Figure 3 (Clone 19 Included) ==="
-        echo "Target: Both simulations x 2 configs (1:1 sel and neu) x 3 metrics = 12 panels"
-
-        selected_configs_supp3="${selected_configs_main}"
-        SUMMARY_FILE_SUPP="${BASE_PROJECT_ROOT}/tltt_12_19/results/${ANALYSIS_TYPE}/irrev/tree_analysis/all_results_summary.csv"
-
-        SUPP3_JOB_ID=$(sbatch --parsable \
-            --dependency=afterok:${MAIN_JOB_ID} \
-            --cpus-per-task=2 \
-            --mem-per-cpu=6gb \
-            --time=30:00 \
-            --job-name=supp1-figure \
-            --output="${STEP4_LOG}" \
-            --error="${STEP4_LOG}" \
-            --account=hoehnlab-share \
-            --wrap="
-            echo \"Supplementary figure 3 started: \$(date)\"
-            source /optnfs/common/miniconda3/etc/profile.d/conda.sh
-            conda activate r_phylo_4.4
-            cd \"$BASE_PROJECT_ROOT\"
-            
-            Rscript scripts/visualization/create_main_figures.R \
-                \"$SUMMARY_FILES_BOTH\" \
-                \"$SIM_INPUT\" \
-                \"$ANALYSIS_TYPE\" \
-                \"$selected_rev_suffixes\" \
-                \"$selected_models\" \
-                \"$selected_configs_supp3\" \
-                \"supp_all_metrics_incl_clone19\" \
-                \"$COMBINED_PLOTS_DIR\"
-
-            echo \"Supplementary figure 3 completed: \$(date)\"
+            echo \"Supplementary figure completed: \$(date)\"
             ")
 
         echo ""
         echo "=== Main Analysis Publication Plots Submitted ==="
-        echo "Main figure job: $MAIN_JOB_ID"
-        echo "Supplementary figure 1 job: $SUPP1_JOB_ID" 
-        echo "Supplementary figure 2 job: $SUPP2_JOB_ID"
-        echo "Supplementary figure 3 job: $SUPP3_JOB_ID"
+        echo "Main figure (1:1 Selection) job: $MAIN_JOB_ID"
+        echo "Supplementary figure (1:1 Neutral) job: $SUPP1_JOB_ID" 
         echo "Output directory: $COMBINED_PLOTS_DIR"
 
         echo ""
@@ -214,33 +133,19 @@ case "$ANALYSIS_TYPE" in
         echo "Main script log: $MAIN_LOG_FILE"
         echo "Step 1 (main plots): $STEP1_LOG"
         echo "Step 2 (supp figure 1): $STEP2_LOG"
-        echo "Step 3 (supp figure 2): $STEP3_LOG"
-        echo "Step 4 (supp figure 3): $STEP4_LOG"
 
         echo ""
         echo "=== Summary of Figures Being Created ==="
         echo "1. Main Figure:"
-        echo "   - Simulations: tltt_08_20, gc_reentry_hunter"
-        echo "   - Configs: 1:1 sel, 1:1 neu (12 panels total)"
-        echo "   - Metrics: tree height, RF distance, MRCA accuracy"
+        echo "   - Simulations: tltt_08_20, gc_reentry"
+        echo "   - Configs: 1:1 sel (8 panels total)"
+        echo "   - Metrics: tree height, tree length, RF distance, MRCA accuracy"
         echo "   - Facet labels: with simulation names"
         echo ""
         echo "2. Supplementary Figure 1:"
         echo "   - Simulation: tltt_08_20"
-        echo "   - Configs: 1:3 sel, 1:3 neu (2 panels total)"
-        echo "   - Metrics: tree height, RF distance, MRCA accuracy"
-        echo "   - Facet labels: with simulation names"
-        echo ""
-        echo "3. Supplementary Figure 2:"
-        echo "   - Simulations: tltt_08_20, gc_reentry_hunter"
-        echo "   - Configs: 1:1 sel, 1:1 neu, 1:3 sel, 1:3 neu (6 panels total)"
-        echo "   - Metric: tree length proportional error"
-        echo "   - Facet labels: with simulation names and config names"
-        echo ""
-        echo "4. Supplementary Figure 3:"
-        echo "   - Simulations: tltt_08_20, gc_reentry_hunter"
-        echo "   - Configs: 1:1 sel, 1:1 neu (12 panels total)"
-        echo "   - Metrics: tree height, RF distance, MRCA accuracy"
+        echo "   - Configs: 1:1 neu (8 panels total)"
+        echo "   - Metrics: tree height, tree length, RF distance, MRCA accuracy"
         echo "   - Facet labels: with simulation names"
         echo ""
         ;;
@@ -250,7 +155,7 @@ case "$ANALYSIS_TYPE" in
         # =============================================================================
         # Step 4: Create Differentiation Timing Plots (for differentiation_analysis)
         echo ""
-        echo "=== Step 4: Creating Differentiation Timing Plots ==="
+        echo "=== Step 3: Creating Differentiation Timing Plots ==="
         
         # Find the job list file for differentiation analysis
         JOB_LIST_FILE="${BASE_PROJECT_ROOT}/tltt_08_20/configs/tree_analysis_jobs_differentiation_analysis_irrev.csv"

@@ -4,55 +4,53 @@ CONFIG_NAME="${1:-config_ratio_1to1_sel}"
 DIR_SUFFIX="${2:-12_18}"
 
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
-HUNTER_SIMULATION_NAME="gc_reentry_hunter_${DIR_SUFFIX}"
+RECALL_SIMULATION_NAME="gc_reentry_${DIR_SUFFIX}"
 REV_SUFFIX="rev"
 ANALYSIS_TYPE="main_analysis"
 config_name="$CONFIG_NAME"
 
-# Hunter's source directories
-# HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/simble_sims_gc_reentry_${DIR_SUFFIX}/"
-# HUNTER_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/beast_results_${DIR_SUFFIX}/"
-HUNTER_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/gc_recall_sims/simble_sims_gc_reentry_${DIR_SUFFIX}/"
-HUNTER_BEAST_SOURCE="/dartfs-hpc/scratch/f007p0j/gc_recall_sims/12_18_MSD"
+# Recall simulation source directories
+RECALL_SIMBLE_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/gc_recall_sims/simble_sims_gc_reentry_${DIR_SUFFIX}/"
+RECALL_BEAST_SOURCE="/dartfs/rc/lab/H/HoehnK/jessie/tyche-validation/gc_recall/selection"
 
 # Conditional dowser source path based on config name
-if [[ "$config_name" == *"1to1_sel"* ]]; then
-    HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}_-200_MSD/"
-    echo "Using Sherry-specific dowser source for config: $config_name"
-else
-    HUNTER_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}/"
-    echo "Using standard dowser source for config: $config_name"
-fi
+# if [[ "$config_name" == *"1to1_sel"* ]]; then
+#     RECALL_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}_-200_MSD/"
+#     echo "Using Sherry-specific dowser source for config: $config_name"
+# else
+#     RECALL_DOWSER_SOURCE="/dartfs/rc/lab/H/HoehnK/Hunter/Type_Linked_Clock/gc_reentry/output_${DIR_SUFFIX}/"
+#     echo "Using standard dowser source for config: $config_name"
+# fi
 
-# Setup Hunter's directory structure
-HUNTER_BASE_DATA_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/data"
-HUNTER_RAW_DATA_DIR="${HUNTER_BASE_DATA_DIR}/raw/${config_name}"
-HUNTER_PROCESSED_DATA_DIR="${HUNTER_BASE_DATA_DIR}/processed"
-HUNTER_RESULTS_BASE_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/results/${ANALYSIS_TYPE}/${REV_SUFFIX}"
-HUNTER_DOWSER_DIR="${HUNTER_PROCESSED_DATA_DIR}/${ANALYSIS_TYPE}/dowser_processed_trees/${REV_SUFFIX}"
+# Setup recall simulation directory structure
+RECALL_BASE_DATA_DIR="${PROJECT_ROOT}/${RECALL_SIMULATION_NAME}/data"
+RECALL_RAW_DATA_DIR="${RECALL_BASE_DATA_DIR}/raw/${config_name}"
+RECALL_PROCESSED_DATA_DIR="${RECALL_BASE_DATA_DIR}/processed"
+RECALL_RESULTS_BASE_DIR="${PROJECT_ROOT}/${RECALL_SIMULATION_NAME}/results/${ANALYSIS_TYPE}/${REV_SUFFIX}"
+RECALL_DOWSER_DIR="${RECALL_PROCESSED_DATA_DIR}/${ANALYSIS_TYPE}/dowser_processed_trees/${REV_SUFFIX}"
 
-echo "=== Setting up Hunter's GC Reentry Analysis ==="
-echo "Hunter simulation: $HUNTER_SIMULATION_NAME"
+echo "=== Setting up Recall Simulation Data ==="
+echo "Recall simulation: $RECALL_SIMULATION_NAME"
 
 # 1. Setup true trees
 echo "Setting up true trees..."
-mkdir -p "$HUNTER_RAW_DATA_DIR"
-if [[ -d "$HUNTER_SIMBLE_SOURCE" ]]; then
-    rsync -av "$HUNTER_SIMBLE_SOURCE" "$HUNTER_RAW_DATA_DIR/"
-    echo "✓ True trees copied to: $HUNTER_RAW_DATA_DIR"
+mkdir -p "$RECALL_RAW_DATA_DIR"
+if [[ -d "$RECALL_SIMBLE_SOURCE" ]]; then
+    rsync -av "$RECALL_SIMBLE_SOURCE" "$RECALL_RAW_DATA_DIR/"
+    echo "✓ True trees copied to: $RECALL_RAW_DATA_DIR"
 fi
 
 # 2. Setup dowser trees
 echo "Setting up dowser trees..."
-mkdir -p "$HUNTER_DOWSER_DIR"
-if [[ -d "$HUNTER_DOWSER_SOURCE" ]]; then
+mkdir -p "$RECALL_DOWSER_DIR"
+if [[ -d "$RECALL_DOWSER_SOURCE" ]]; then
     echo "Copying and renaming dowser files..."
     
     # Copy all files first
-    rsync -av "$HUNTER_DOWSER_SOURCE" "${HUNTER_DOWSER_DIR}/temp_dowser/"
+    rsync -av "$RECALL_DOWSER_SOURCE" "${RECALL_DOWSER_DIR}/temp_dowser/"
     
     # Process each file in the temp directory
-    find "${HUNTER_DOWSER_DIR}/temp_dowser/" -type f -name "*.rds" | while read file; do
+    find "${RECALL_DOWSER_DIR}/temp_dowser/" -type f -name "*.rds" | while read file; do
         filename=$(basename "$file")
         
         # 1. Capitalize first letters
@@ -77,39 +75,39 @@ if [[ -d "$HUNTER_DOWSER_SOURCE" ]]; then
         new_filename="${config_name}_${new_filename}"
         
         # Copy with new name
-        cp "$file" "${HUNTER_DOWSER_DIR}/${new_filename}"
+        cp "$file" "${RECALL_DOWSER_DIR}/${new_filename}"
     done
     
     # Remove temp directory
-    rm -rf "${HUNTER_DOWSER_DIR}/temp_dowser/"
+    rm -rf "${RECALL_DOWSER_DIR}/temp_dowser/"
     
-    echo "✓ Dowser trees copied and renamed to: $HUNTER_DOWSER_DIR"
+    echo "✓ Dowser trees copied and renamed to: $RECALL_DOWSER_DIR"
 else
-    echo "⚠ Dowser source not found (may still be running): $HUNTER_DOWSER_SOURCE"
+    echo "⚠ Dowser source not found (may still be running): $RECALL_DOWSER_SOURCE"
 fi
 
 # 3. Setup BEAST results with model type inference
 echo "Setting up BEAST results..."
-mkdir -p "${HUNTER_RESULTS_BASE_DIR}/tyche_models/beast_raw_output/${config_name}"
-mkdir -p "${HUNTER_RESULTS_BASE_DIR}/competing_models/beast_raw_output/${config_name}"
+mkdir -p "${RECALL_RESULTS_BASE_DIR}/tyche_models/beast_raw_output/${config_name}"
+mkdir -p "${RECALL_RESULTS_BASE_DIR}/competing_models/beast_raw_output/${config_name}"
 
-if [[ -d "$HUNTER_BEAST_SOURCE" ]]; then
+if [[ -d "$RECALL_BEAST_SOURCE" ]]; then
     echo "Copying all BEAST files and organizing by model type..."
     
     # Copy tyche_models files (case-insensitive)
-    find "$HUNTER_BEAST_SOURCE" -iname "ExpectedOccupancy*" -o -iname "InstantSwitch*" -o -iname "MixedSwitch*" | while read file; do
-        cp "$file" "${HUNTER_RESULTS_BASE_DIR}/tyche_models/beast_raw_output/${config_name}/"
+    find "$RECALL_BEAST_SOURCE" -iname "ExpectedOccupancy*" -o -iname "InstantSwitch*" -o -iname "MixedSwitch*" | while read file; do
+        cp "$file" "${RECALL_RESULTS_BASE_DIR}/tyche_models/beast_raw_output/${config_name}/"
     done
     
     # Copy competing_models files (case-insensitive)  
-    find "$HUNTER_BEAST_SOURCE" -iname "strictclock*" -o -iname "ucrelaxedclock*" | while read file; do
-        cp "$file" "${HUNTER_RESULTS_BASE_DIR}/competing_models/beast_raw_output/${config_name}/"
+    find "$RECALL_BEAST_SOURCE" -iname "strictclock*" -o -iname "ucrelaxedclock*" | while read file; do
+        cp "$file" "${RECALL_RESULTS_BASE_DIR}/competing_models/beast_raw_output/${config_name}/"
     done
     
     echo "BEAST results organized by model type"
 
     # Process tyche_models files
-    cd "${HUNTER_RESULTS_BASE_DIR}/tyche_models/beast_raw_output/${config_name}"
+    cd "${RECALL_RESULTS_BASE_DIR}/tyche_models/beast_raw_output/${config_name}"
     for file in *; do
         if [[ -f "$file" ]]; then
             new_name="$file"
@@ -130,7 +128,7 @@ if [[ -d "$HUNTER_BEAST_SOURCE" ]]; then
     done
     
     # Process competing_models files
-    cd "${HUNTER_RESULTS_BASE_DIR}/competing_models/beast_raw_output/${config_name}"
+    cd "${RECALL_RESULTS_BASE_DIR}/competing_models/beast_raw_output/${config_name}"
     for file in *; do
         if [[ -f "$file" ]]; then
             new_name="$file"
@@ -154,22 +152,22 @@ if [[ -d "$HUNTER_BEAST_SOURCE" ]]; then
 fi
 
 # 4. Create configs directory
-HUNTER_CONFIGS_DIR="${PROJECT_ROOT}/${HUNTER_SIMULATION_NAME}/configs"
-mkdir -p "$HUNTER_CONFIGS_DIR"
+RECALL_CONFIGS_DIR="${PROJECT_ROOT}/${RECALL_SIMULATION_NAME}/configs"
+mkdir -p "$RECALL_CONFIGS_DIR"
 
 # Remove older files
-find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_hunter_${DIR_SUFFIX}/results/main_analysis/rev/competing_models/beast_raw_output/ -type f -mtime +30 -delete
-find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_hunter_${DIR_SUFFIX}/results/main_analysis/rev/tyche_models/beast_raw_output/ -type f -mtime +30 -delete
-find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_hunter_${DIR_SUFFIX}/results/main_analysis/rev/tree_analysis -type f -mtime +30 -delete
+find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_${DIR_SUFFIX}/results/main_analysis/rev/competing_models/beast_raw_output/ -type f -mtime +30 -delete
+find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_${DIR_SUFFIX}/results/main_analysis/rev/tyche_models/beast_raw_output/ -type f -mtime +30 -delete
+find /dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE/gc_reentry_${DIR_SUFFIX}/results/main_analysis/rev/tree_analysis -type f -mtime +30 -delete
 echo "Old BEAST result files older than 30 days have been removed"
 
 echo ""
-echo "✓ Hunter's data setup complete!"
+echo "✓ Recall simulation data setup complete!"
 echo ""
 echo "Directory structure created:"
-echo "  Data: $HUNTER_BASE_DATA_DIR"
-echo "  Results: $HUNTER_RESULTS_BASE_DIR"
-echo "  Configs: $HUNTER_CONFIGS_DIR"
+echo "  Data: $RECALL_BASE_DATA_DIR"
+echo "  Results: $RECALL_RESULTS_BASE_DIR"
+echo "  Configs: $RECALL_CONFIGS_DIR"
 echo ""
 echo "File naming changes applied:"
 echo "  - EstTraitClockRates → EstClockRates"

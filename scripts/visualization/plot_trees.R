@@ -43,6 +43,22 @@ cat("Analysis type:", analysis_type, "\n")
 cat("Config:", config_name, "\n")
 cat("Template:", template_name, "\n")
 
+# -------------------------- Helper functions --------------------------
+standardize_tree_location_data <- function(tree, verbose = FALSE) {
+  if (is.null(tree)) return(NULL)
+
+  # Check if 'celltype' exists in the @data slot
+  if ("celltype" %in% colnames(tree@data)) {
+    if (verbose) cat("  Standardizing: Renaming 'celltype' to 'location'\n")
+
+    # Use dplyr rename on the data slot
+    tree@data <- tree@data %>% 
+      dplyr::rename(location = celltype)
+  }
+
+  return(tree)
+}
+
 # -------------------------- Plotting functions --------------------------
 create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
                                   config_name, template_name, analysis_type) {
@@ -114,6 +130,8 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
       }
 
       beast_tree <- read.beast(beast_tree_file)
+      beast_tree <- standardize_tree_location_data(beast_tree, verbose = TRUE)
+
       true_time_tree <- true_time_trees[[as.numeric(clone_id)]]
 
       if (is.null(true_time_tree)) {
@@ -169,8 +187,8 @@ create_all_tree_plots <- function(beast_tree_files, true_tree_file, plots_dir,
         all_plots$combined[[clone_id]] <- combined_plot
 
         # 5. Four-tree scaled plot
-        four_tree_plot <- create_four_tree_plot(beast_tree_file, true_time_tree, true_genetic_tree, 
-                                                clone_id, template_name, config_name, 
+        four_tree_plot <- create_four_tree_plot(beast_tree_file, true_time_tree, true_genetic_tree,
+                                                clone_id, template_name, config_name,
                                                 beast_location_colors, standard_location_colors)
         if (!is.null(four_tree_plot)) {
           all_plots$four_trees[[clone_id]] <- four_tree_plot
@@ -392,9 +410,11 @@ create_four_tree_plot <- function(beast_tree_file, true_time_tree, true_genetic_
       return(NULL)
     }
 
-    # Load BEAST trees
+    # Load and standardize BEAST trees
     eo_fixed_tree <- read.beast(eo_fixed_file)
     sc_ar_tree <- read.beast(sc_ar_file)
+    eo_fixed_tree <- standardize_tree_location_data(eo_fixed_tree, verbose = TRUE)
+    sc_ar_tree <- standardize_tree_location_data(sc_ar_tree, verbose = TRUE)
 
     # Calculate maximum tree height for scaling
     tree_height <- max(

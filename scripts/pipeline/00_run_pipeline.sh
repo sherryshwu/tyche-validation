@@ -31,7 +31,7 @@ echo "=== Step 3-2: Tree Analysis (gc_reentry_hunter) ==="
 bash scripts/setup/import_gc_reentry_data.sh config_ratio_1to1_sel 12_18
 # bash scripts/setup/import_gc_reentry_data.sh config_ratio_1to1_neu uniform_neutral_8_29
 bash scripts/setup/import_gc_reentry_data.sh config_ratio_1to1_neu uniform_neutral_9_9
-bash scripts/pipeline/03_analyze_trees.sh "gc_reentry_hunter_${DIR_SUFFIX}" main_analysis rev
+bash scripts/pipeline/03_analyze_trees.sh "gc_reentry_${DIR_SUFFIX}" main_analysis rev
 
 # Step 3-3: Tree analysis for differentiation_analysis
 echo ""
