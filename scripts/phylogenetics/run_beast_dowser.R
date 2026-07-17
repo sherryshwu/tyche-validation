@@ -61,7 +61,7 @@ job_params <- combinations[task_id, ]
 # Extract job parameters
 config_name <- job_params$config_name
 template_id <- job_params$template_id
-include_germline <- job_params$germline
+include_germline <- as.logical(job_params$germline)
 airr_file <- job_params$airr_file
 
 # Handle time subset for sub_analysis
@@ -205,6 +205,8 @@ is_selective <- grepl("_sel$", config_name)
 if (is_neutral) {
   analysis_data <- ensure_neutral_fields(analysis_data)
   GC_data       <- ensure_neutral_fields(GC_data)
+} else if (!is_selective) {
+  stop("Config name matches neither _sel nor _neu: ", config_name)
 }
 
 # Set AIRR processing parameters based on evolution type
@@ -304,9 +306,9 @@ GEO_RATE_ALPHA <- NULL
 GEO_RATE_BETA <- NULL
 INITIAL_STATE <- NULL
 
-# Extract config-specific mean GC clock rates for TyCHE and competing models during all analysis scopes
+# Extract config-specific mean GC clock rates for TyCHE, competing models, and fixed-topology models during all analysis scopes
 # and GC stict clock model for differentiation timing analysis
-if (model_type %in% c("tyche_models", "competing_models")) {
+if (model_type %in% c("tyche_models", "competing_models", "fixed_topology_models")) {
   # Determine which analysis scope to get GC rates from
   if (analysis_scope == "differentiation_analysis") {
     # Use main_analysis GC rates for differentiation analysis
@@ -366,6 +368,22 @@ if (analysis_scope %in% c("main_analysis", "sub_analysis")) {
     if (grepl("UCRelaxedClock", template_id)) {
       UCLD_SIGMA_INIT <- "0.5"
     }
+
+  } else if (model_type == "fixed_topology_models") {
+    if (grepl("ExpectedOccupancy", template_id)) {
+      # TyCHE EO on fixed dnapars topology
+      TRAIT_RATE_MEAN_1 <- as.character(mean_gc_clock_rate)
+      TRAIT_RATE_MEAN_2 <- "0.000001"
+      TRANSITION_RATE_ALPHA_1 <- "0.1"
+      TRANSITION_RATE_BETA_1  <- "1.0"
+      TRANSITION_RATE_ALPHA_2 <- "0.1"
+      TRANSITION_RATE_BETA_2  <- "1.0"
+    } else if (grepl("StrictClock", template_id)) {
+      # Strict clock on fixed dnapars topology
+      CLOCK_RATE_INIT <- as.character(mean_gc_clock_rate)
+      TRANSITION_RATE_ALPHA <- "0.1"
+      TRANSITION_RATE_BETA  <- "1.0"
+    }
   }
 
   # Calculate sigma parameters for trait rates (if applicable)
@@ -409,6 +427,29 @@ logKVs("BEAST Parameters Summary", c(
   RATE_INDICATORS     = RATE_INDICATORS,
   Template_ID         = template_id
 ))
+
+# ------------------ Load fixed dnapars topology trees ------------------ #
+fixed_trees <- NULL
+if (model_type == "fixed_topology_models") {
+  dnapars_base <- "/dartfs/rc/lab/H/HoehnK/jessie/tyche/sims/primary"
+  dnapars_path <- if (is_neutral) {
+    file.path(dnapars_base, "uniform_neutral", "dnapars_trees.rds")
+  } else {
+    file.path(dnapars_base, "selection", "dnapars_trees.rds")
+  }
+  if (!file.exists(dnapars_path)) {
+    stop("dnapars trees not found: ", dnapars_path)
+  }
+  fixed_trees <- readRDS(dnapars_path)
+  cat("Loaded", length(fixed_trees), "dnapars fixed-topology trees from:", dnapars_path, "\n")
+  cat("clones n =", nrow(clones), "| dnapars trees n =", length(fixed_trees), "\n")
+
+  # Sanity check: clone/tip correspondence between clones and supplied trees
+  if (length(fixed_trees) != nrow(clones)) {
+    stop("Mismatch: ", nrow(clones), " clones vs ", length(fixed_trees),
+         " dnapars trees for config ", config_name)
+  }
+}
 
 # ------------------ Run getTimeTreesIterate ------------------ #
 # Create XML files and build time trees with iterative improvement
@@ -475,7 +516,9 @@ trees <- getTimeTreesIterate(
   TRAIT_RATE_SIGMA_3 = TRAIT_RATE_SIGMA_3,
   GEO_RATE_ALPHA     = GEO_RATE_ALPHA,
   GEO_RATE_BETA      = GEO_RATE_BETA,
-  INITIAL_STATE      = INITIAL_STATE
+  INITIAL_STATE      = INITIAL_STATE,
+  # Maximum Parsimony (dnapars) with fixed topology trees
+  trees              = fixed_trees
 )
 
 cat("=== getTimeTreesIterate completed ===\n")

@@ -31,6 +31,10 @@ case "$analysis_scope" in
             "StrictClock_AncestralReconstruction"
             "UCRelaxedClock_AncestralReconstruction"
         )
+        fixed_topology_templates=(
+            "StrictClock_AncestralReconstruction_FixedTopo"
+            "ExpectedOccupancy_EstClockRates_FixedTopo"
+        )
         germline_options=("true")
         file_suffix=""
         ;;
@@ -70,6 +74,7 @@ esac
 gc_strict_file="${output_dir}/beast_job_combinations${file_suffix}_gc_strict_clock.csv"
 tyche_file="${output_dir}/beast_job_combinations${file_suffix}_tyche_models.csv"
 competing_file="${output_dir}/beast_job_combinations${file_suffix}_competing_models.csv"
+fixed_topology_file="${output_dir}/beast_job_combinations${file_suffix}_fixed_topology_models.csv"
 
 # Create CSV headers with time_subset column for sub_analysis
 if [[ "$analysis_scope" == "sub_analysis" ]]; then
@@ -90,6 +95,9 @@ else
     if [[ ${#competing_templates[@]} -gt 0 ]]; then
         echo "config_name,template_id,germline,airr_file" > "$competing_file"
     fi
+    if [[ ${#fixed_topology_templates[@]} -gt 0 ]]; then
+        echo "config_name,template_id,germline,airr_file" > "$fixed_topology_file"
+    fi
 fi
 
 echo "===== Generating BEAST Job Combinations ====="
@@ -103,6 +111,7 @@ echo "=============================================="
 gc_strict_count=0
 tyche_count=0
 competing_count=0
+fixed_topology_count=0
 
 # Process each config directory
 for config_dir in "$raw_data_dir"/config_*; do
@@ -113,16 +122,16 @@ for config_dir in "$raw_data_dir"/config_*; do
         case "$analysis_scope" in
             main_analysis)
                 # Process all configs
-                # Only process 1to1 sel config for testing
-                if [[ ! "$config_name" == *"_1to1_neu" ]]; then
-                    echo "  Skipping $config_name (only 1to1_neu is allowed for main_analysis)"
-                    continue
-                fi
-                # # Process both 1:1 selection and 1:1 neutral
-                # if [[ ! "$config_name" =~ _1to1_(sel|neu)$ ]]; then
-                #     echo "  Skipping $config_name (only 1to1_sel and 1to1_neu allowed)"
+                # # Only process 1to1 sel config for testing
+                # if [[ ! "$config_name" == *"_1to1_neu" ]]; then
+                #     echo "  Skipping $config_name (only 1to1_neu is allowed for main_analysis)"
                 #     continue
                 # fi
+                # Process both 1:1 selection and 1:1 neutral
+                if [[ ! "$config_name" =~ _1to1_(sel|neu)$ ]]; then
+                    echo "  Skipping $config_name (only 1to1_sel and 1to1_neu allowed)"
+                    continue
+                fi
                 ;;
             sub_analysis)
                 # Only process sel and neu configs
@@ -205,6 +214,16 @@ for config_dir in "$raw_data_dir"/config_*; do
                         done
                     done
                 fi
+
+                # FIXED TOPOLOGY JOBS
+                if [[ ${#fixed_topology_templates[@]} -gt 0 ]]; then
+                    for template in "${fixed_topology_templates[@]}"; do
+                        for germline in "${germline_options[@]}"; do
+                            echo "$config_name,$template,$germline,$airr_file" >> "$fixed_topology_file"
+                            ((fixed_topology_count++))
+                        done
+                    done
+                fi
             fi
             
         else
@@ -233,7 +252,13 @@ else
     competing_jobs=0
 fi
 
-total_jobs=$((gc_strict_jobs + tyche_jobs + competing_jobs))
+if [[ -f "$fixed_topology_file" ]]; then
+    fixed_topology_jobs=$(tail -n +2 "$fixed_topology_file" | wc -l)
+else
+    fixed_topology_jobs=0
+fi
+
+total_jobs=$((gc_strict_jobs + tyche_jobs + competing_jobs + fixed_topology_jobs))
 
 echo ""
 echo "=== Job Generation Summary ==="
@@ -246,7 +271,9 @@ fi
 if [[ ${#competing_templates[@]} -gt 0 ]]; then
     echo "Competing Models: $competing_count jobs → $(basename "$competing_file")"
 fi
-
+if [[ ${#fixed_topology_templates[@]} -gt 0 ]]; then
+    echo "Fixed Topology Models: $fixed_topology_count jobs → $(basename "$fixed_topology_file")"
+fi
 echo "Total jobs: $total_jobs"
 
 # Validate job counts
@@ -261,6 +288,7 @@ echo "=== Template Summary ==="
 echo "GC Strict Clock templates: ${gc_strict_templates[*]:-none}"
 echo "TyCHE model templates: ${tyche_templates[*]:-none}"
 echo "Competing model templates: ${competing_templates[*]:-none}"
+echo "Fixed Topology model templates: ${fixed_topology_templates[*]:-none}"
 
 echo ""
 echo "✓ Job combinations generated successfully!"

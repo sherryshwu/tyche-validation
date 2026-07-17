@@ -131,10 +131,37 @@ else
     competing_job_id=""
 fi
 
+# Step 4: Submit Fixed Topology Models (MBE revision)
+if [[ "$analysis_scope" == "main_analysis" ]]; then
+    fixed_topo_job_file="${PROJECT_ROOT}/${simulation_run}/configs/beast_job_combinations_fixed_topology_models.csv"
+else
+    fixed_topo_job_file="${PROJECT_ROOT}/${simulation_run}/configs/beast_job_combinations_${analysis_scope}_fixed_topology_models.csv"
+fi
+
+if [[ -f "$fixed_topo_job_file" ]]; then
+    fixed_topo_job_count=$(tail -n +2 "$fixed_topo_job_file" | wc -l)
+    echo "Found $fixed_topo_job_count fixed-topology model jobs"
+
+    # Submit with dependency on step 1
+    fixed_topo_job_id=$(sbatch --parsable ${dependency_flag} \
+        --array=1-${fixed_topo_job_count}%${max_jobs_at_once} \
+        $run_script "$simulation_run" "$analysis_scope" "fixed_topology_models" "$reversible")
+
+    if [[ $? -eq 0 ]]; then
+        echo "✓ Fixed-topology model jobs submitted with ID: $fixed_topo_job_id"
+    else
+        echo "✗ Failed to submit fixed-topology model jobs"
+    fi
+else
+    echo "No fixed-topology job file found, skipping..."
+    fixed_topo_job_id=""
+fi
+
 # Summary
 echo ""
 echo "=== JOB SUBMISSION SUMMARY ==="
 echo "GC Strict Clock: $gc_job_id ($gc_job_count jobs)"
 [[ -n "$tyche_job_id" ]] && echo "TyCHE Models: $tyche_job_id ($tyche_job_count jobs)"
 [[ -n "$competing_job_id" ]] && echo "Competing Models: $competing_job_id ($competing_job_count jobs)"
+[[ -n "$fixed_topo_job_id" ]] && echo "Fixed Topology Models: $fixed_topo_job_id ($fixed_topo_job_count jobs)"
 echo ""

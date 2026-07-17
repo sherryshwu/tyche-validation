@@ -99,6 +99,9 @@ case "$model_type" in
     competing_models)
         step_description="Competing models (Strict + UCLD) on all B cell populations"
         ;;
+    fixed_topology_models)
+        step_description="Fixed-topology (dnapars MP) models: StrictClock + TyCHE EO on all B cell populations"
+        ;;
 esac
 
 # Extract config name from combinations file for this task
