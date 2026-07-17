@@ -29,6 +29,9 @@ TEMPLATE_MAP <- c(
   # Competing models
   "StrictClock_AncestralReconstruction"                    = "StrictClock/StrictClock_AncestralReconstruction_EmpFreq.xml",
   "UCRelaxedClock_AncestralReconstruction"                 = "UCLD/UCRelaxedClock_AncestralReconstruction_EmpFreq.xml",
+  # dnapars maximum parsimony with fixed topology benchmark
+  "StrictClock_AncestralReconstruction_FixedTopo"          = "FixedTopology/StrictClock_AncestralReconstruction_EmpFreq.xml",
+  "ExpectedOccupancy_EstClockRates_FixedTopo"              = "FixedTopology/TypeLinkedExpectedOccupancy_EstTraitClockRates_EmpFreq.xml",
   # TyCHE 3-state model for differentiation analysis
   "TraitLinkedInstantSwitch_EstTraitClockRates_EmpFreq_3state" = "TraitLinkedInstantSwitch_EstTraitClockRates_EmpFreq_3state.xml"
 )
