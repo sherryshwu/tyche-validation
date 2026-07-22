@@ -3,6 +3,7 @@
 SIMULATION_NAME="${1:-tltt_12_19}"
 ANALYSIS_TYPE="${2:-main_analysis}"
 REV_SUFFIX="${3:-irrev}"
+MODEL_TYPE_FILTER="${4:-}"    # optional: restrict to one model_type
 
 # Setup paths
 PROJECT_ROOT="/dartfs/rc/lab/H/HoehnK/Sherry/beast_workspace/TyCHE"
@@ -10,6 +11,11 @@ RESULTS_BASE_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/results/${ANALYSIS_TYPE}/${
 TREE_ANALYSIS_DIR="${RESULTS_BASE_DIR}/tree_analysis"
 RAW_DATA_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/data/raw"
 LOG_DIR="${PROJECT_ROOT}/${SIMULATION_NAME}/logs/${ANALYSIS_TYPE}/tree_analysis"
+
+# Scope output dir when restricted to a single model type
+if [[ -n "$MODEL_TYPE_FILTER" ]]; then
+    TREE_ANALYSIS_DIR="${RESULTS_BASE_DIR}/tree_analysis/${MODEL_TYPE_FILTER}"
+fi
 
 # Setup logging
 LOG_FILE="${LOG_DIR}/tree_analysis_${ANALYSIS_TYPE}_${REV_SUFFIX}_$(date +%Y%m%d_%H%M%S).log"
@@ -46,14 +52,25 @@ mkdir -p "$CONFIGS_DIR"
 
 # Find all model types that have been run
 MODEL_TYPES=()
-for model_dir in "$RESULTS_BASE_DIR"/*; do
-    if [[ -d "$model_dir" ]]; then
-        model_type=$(basename "$model_dir")
-        MODEL_TYPES+=("$model_type")
-        echo "Found model type: $model_type"
+if [[ -n "$MODEL_TYPE_FILTER" ]]; then
+    # Single model type requested
+    if [[ -d "$RESULTS_BASE_DIR/$MODEL_TYPE_FILTER" ]]; then
+        MODEL_TYPES+=("$MODEL_TYPE_FILTER")
+        echo "Restricting to model type: $MODEL_TYPE_FILTER"
+    else
+        echo "ERROR: Requested model type dir not found: $RESULTS_BASE_DIR/$MODEL_TYPE_FILTER"
+        exit 1
     fi
-done
-
+else
+    echo "Scanning for all model types in $RESULTS_BASE_DIR"
+    for model_dir in "$RESULTS_BASE_DIR"/*; do
+        if [[ -d "$model_dir" ]]; then
+            model_type=$(basename "$model_dir")
+            MODEL_TYPES+=("$model_type")
+            echo "Found model type: $model_type"
+        fi
+    done
+fi
 if [[ ${#MODEL_TYPES[@]} -eq 0 ]]; then
     echo "ERROR: No model directories found in $RESULTS_BASE_DIR"
     exit 1
@@ -158,8 +175,9 @@ echo "=== Step 1.5: Checking Convergence Summaries ==="
 # Check if convergence summaries exist
 TYCHE_CONV_FILE="$RESULTS_BASE_DIR/tyche_models/summary/tyche_models_convergence_summary.csv"
 COMP_CONV_FILE="$RESULTS_BASE_DIR/competing_models/summary/competing_models_convergence_summary.csv"
+FIXED_CONV_FILE="$RESULTS_BASE_DIR/fixed_topology_models/summary/fixed_topology_models_convergence_summary.csv"
 
-if [[ ! -f "$TYCHE_CONV_FILE" ]] || [[ ! -f "$COMP_CONV_FILE" ]]; then
+if [[ ! -f "$TYCHE_CONV_FILE" ]] || [[ ! -f "$COMP_CONV_FILE" ]] || [[ ! -f "$FIXED_CONV_FILE" ]]; then
     echo "Convergence summaries missing - generating them..."
     
     Rscript scripts/analysis/summarize_convergence.R \
